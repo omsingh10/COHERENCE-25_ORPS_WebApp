@@ -12,7 +12,9 @@ import {
   Alert,
   AlertIcon,
   Container,
-  Link
+  Link,
+  UnorderedList,
+  ListItem
 } from '@chakra-ui/react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -34,6 +36,17 @@ const Register = () => {
     // Validation
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    // Additional validation
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (email === 'admin@smartcity.com' || email === 'user1@smartcity.com') {
+      setError('This email is already registered. Please use a different email.');
       return;
     }
 
@@ -135,6 +148,15 @@ const Register = () => {
                     Login
                   </Link>
                 </Text>
+                <Box borderWidth="1px" borderRadius="md" p={3} mt={2} bg="gray.50">
+                  <Text align={'center'} fontSize="sm" color="gray.700" fontWeight="medium" mb={2}>
+                    For demo purposes, you can use any valid combination of name, email, and password, or use the existing accounts:
+                  </Text>
+                  <UnorderedList fontSize="sm" color="gray.600" pl={4}>
+                    <ListItem>Admin: admin@smartcity.com / admin123</ListItem>
+                    <ListItem>User: user1@smartcity.com / user123</ListItem>
+                  </UnorderedList>
+                </Box>
               </Stack>
             </Stack>
           </form>

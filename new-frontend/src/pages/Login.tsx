@@ -12,7 +12,9 @@ import {
   Alert,
   AlertIcon,
   Container,
-  Link
+  Link,
+  UnorderedList,
+  ListItem
 } from '@chakra-ui/react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -106,9 +108,15 @@ const Login = () => {
                     Register
                   </Link>
                 </Text>
-                <Text align={'center'} fontSize="sm" color="gray.500">
-                  Hint: Any email/password combination will work for demo purposes
-                </Text>
+                <Box borderWidth="1px" borderRadius="md" p={3} mt={2} bg="gray.50">
+                  <Text align={'center'} fontSize="sm" color="gray.700" fontWeight="medium" mb={2}>
+                    Demo Credentials:
+                  </Text>
+                  <UnorderedList fontSize="sm" color="gray.600" pl={4}>
+                    <ListItem>Admin: admin@smartcity.com / admin123</ListItem>
+                    <ListItem>User: user1@smartcity.com / user123</ListItem>
+                  </UnorderedList>
+                </Box>
               </Stack>
             </Stack>
           </form>

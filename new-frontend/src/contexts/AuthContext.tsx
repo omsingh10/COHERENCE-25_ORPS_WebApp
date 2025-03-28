@@ -43,7 +43,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // Mock login - in a real app, this would call an API
+      // Check for specific credentials first
+      if (email === 'admin@smartcity.com' && password === 'admin123') {
+        const adminUser: User = {
+          id: 'admin-1',
+          name: 'Admin User',
+          email: 'admin@smartcity.com',
+          role: 'admin'
+        };
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        setUser(adminUser);
+        return true;
+      }
+      
+      if (email === 'user1@smartcity.com' && password === 'user123') {
+        const regularUser: User = {
+          id: 'user-1',
+          name: 'Regular User',
+          email: 'user1@smartcity.com',
+          role: 'user',
+          city: 'Mumbai'
+        };
+        localStorage.setItem('user', JSON.stringify(regularUser));
+        setUser(regularUser);
+        return true;
+      }
+
+      // Mock login for any other credentials - in a real app, this would call an API
       // For demo purposes, accept any email/password with basic validation
       if (!email || !password) {
         return false;
