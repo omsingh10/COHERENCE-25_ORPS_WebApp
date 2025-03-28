@@ -7,19 +7,24 @@ const ColorModeToggle = () => {
   const SwitchIcon = colorMode === 'light' ? FiMoon : FiSun;
   const nextMode = colorMode === 'light' ? 'dark' : 'light';
   
+  // Use color mode value to ensure the icon is visible in both modes
+  const iconColor = useColorModeValue('gray.800', 'white');
+  const bgColor = useColorModeValue('gray.100', 'gray.700');
+  const hoverBgColor = useColorModeValue('gray.200', 'gray.600');
+
   return (
     <Tooltip label={`Switch to ${nextMode} mode`} placement="bottom">
       <IconButton
-        size="md"
-        fontSize="lg"
         aria-label={`Switch to ${nextMode} mode`}
         variant="ghost"
-        color={useColorModeValue('gray.600', 'gray.200')}
+        color={iconColor}
+        bg={bgColor}
+        _hover={{ bg: hoverBgColor }}
+        icon={<SwitchIcon size={18} />}
         onClick={toggleColorMode}
-        icon={<SwitchIcon />}
-        _hover={{
-          bg: useColorModeValue('gray.100', 'gray.700'),
-        }}
+        size="md"
+        ml={2}
+        rounded="full"
       />
     </Tooltip>
   );

@@ -27,6 +27,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { FiMenu, FiSun, FiMoon, FiBell, FiUser, FiLogOut, FiHome, FiPieChart, FiMap, FiAlertCircle, FiSettings } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import ColorModeToggle from './ColorModeToggle';
 
 const Navbar = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -161,15 +162,7 @@ const Navbar = () => {
         </HStack>
 
         <Flex align="center">
-          <IconButton
-            icon={isDark ? <FiSun /> : <FiMoon />}
-            aria-label="Toggle color mode"
-            variant="ghost"
-            onClick={toggleColorMode}
-            mr={2}
-            color={isAdmin && !isDark ? 'admin.500' : undefined}
-          />
-          
+          <ColorModeToggle />
           <IconButton
             icon={<FiBell />}
             variant="ghost"

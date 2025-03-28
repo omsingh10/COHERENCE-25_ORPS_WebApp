@@ -1,3 +1,4 @@
+import React from 'react';
 import { 
   Box, 
   Heading, 
@@ -15,10 +16,18 @@ import {
   StatLabel,
   StatNumber,
   StatHelpText,
+  Image,
+  Card,
+  CardBody,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FiBarChart2, FiUsers, FiBell, FiMapPin, FiSettings } from 'react-icons/fi';
+import { FiBarChart2, FiUsers, FiBell, FiMapPin, FiSettings, FiActivity, FiArrowRight, FiAlertCircle } from 'react-icons/fi';
+import WeatherCard from '../components/WeatherCard';
+import TomTomMap from '../components/TomTomMap';
+
+// Major cities for weather highlights
+const MAJOR_CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai'];
 
 const Home = () => {
   const { isAuthenticated, user } = useAuth();
@@ -72,162 +81,259 @@ const Home = () => {
   const cardBg = useColorModeValue('white', 'gray.700');
   const cardBorder = useColorModeValue('gray.100', 'gray.600');
   const statColor = useColorModeValue('blue.600', 'blue.200');
+  const accentColor = useColorModeValue('blue.500', 'blue.300');
+  const subtitleColor = useColorModeValue('gray.600', 'gray.400');
+  const featureBg = useColorModeValue('blue.50', 'blue.900');
 
   return (
-    <Box bg={useColorModeValue('white', 'gray.900')} minH="100vh">
-      <Container maxW="container.xl" py={10}>
-        {isAuthenticated ? (
-          // Logged-in view
-          <Box>
-            <Flex justify="space-between" align="center" mb={8}>
-              <Box>
-                <Heading as="h1" size="xl" mb={2}>
-                  Welcome back, {user?.name}
-                  {user?.role === 'admin' && <Badge ml={2} colorScheme="purple">Admin</Badge>}
-                </Heading>
-                <Text color={textColor} fontSize="lg">
-                  {user?.role === 'admin' 
-                    ? 'Manage your smart city infrastructure from your admin dashboard'
-                    : 'Track real-time city metrics and personalized alerts'}
-                </Text>
-              </Box>
-              
-              <Button
-                as={RouterLink}
-                to={dashboardPath}
-                size="lg"
-                colorScheme="blue"
-                rightIcon={<Icon as={FiBarChart2} />}
+    <Box bg={bgColor} minH="100vh">
+      {/* Hero Section */}
+      <Box
+        bg={useColorModeValue('blue.50', 'gray.800')}
+        pt={{ base: 16, md: 24 }}
+        pb={{ base: 10, md: 16 }}
+      >
+        <Container maxW="container.xl">
+          <Flex direction={{ base: 'column', md: 'row' }} align="center">
+            <Box maxW={{ base: '100%', md: '50%' }} mb={{ base: 8, md: 0 }}>
+              <Heading
+                as="h1"
+                size="2xl"
+                fontWeight="bold"
+                mb={4}
+                lineHeight="1.2"
+                color={textColor}
               >
-                Go to Dashboard
-              </Button>
-            </Flex>
-            
-            {/* Quick Stats */}
-            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={10}>
-              {getQuickStats().map((stat, index) => (
-                <Box 
-                  key={index} 
-                  bg={cardBg} 
-                  p={6} 
-                  borderRadius="lg" 
-                  boxShadow="md" 
-                  border="1px" 
-                  borderColor={cardBorder}
-                >
-                  <Stat>
-                    <StatLabel fontSize="md" color={textColor}>{stat.label}</StatLabel>
-                    <StatNumber fontSize="2xl" fontWeight="bold" color={statColor}>
-                      {stat.value}
-                    </StatNumber>
-                    <StatHelpText color={textColor}>{stat.helpText}</StatHelpText>
-                  </Stat>
-                </Box>
-              ))}
-            </SimpleGrid>
-            
-            {/* Feature Cards */}
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>
-              {getFeatureCards().map((feature, index) => (
-                <Box
-                  key={index}
-                  bg={cardBg}
-                  p={6}
-                  borderRadius="lg"
-                  boxShadow="md"
-                  border="1px"
-                  borderColor={cardBorder}
-                  transition="transform 0.3s"
-                  _hover={{ transform: 'translateY(-5px)', boxShadow: 'lg' }}
-                >
-                  <Icon as={feature.icon} boxSize={10} color="blue.500" mb={4} />
-                  <Heading size="md" mb={2}>{feature.title}</Heading>
-                  <Text color={textColor}>{feature.description}</Text>
-                </Box>
-              ))}
-            </SimpleGrid>
-          </Box>
-        ) : (
-          // Non-authenticated view
-          <VStack spacing={8} textAlign="center" py={10}>
-            <Heading
-              as="h1"
-              fontSize={{ base: '4xl', md: '5xl', lg: '6xl' }}
-              bgGradient={bgGradient}
-              bgClip="text"
-            >
-              OPRS Dashboard
-            </Heading>
-            
-            <Text fontSize={{ base: 'lg', md: 'xl' }} color={textColor} maxW="2xl">
-              A powerful operations dashboard for monitoring and managing your systems.
-              Get real-time insights, analytics, and alerts all in one place.
-            </Text>
-            
-            <HStack spacing={4} pt={8}>
-              <Button
-                as={RouterLink}
-                to="/login"
-                size="lg"
-                colorScheme="blue"
-                rounded="full"
-                px={8}
-                _hover={{
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'lg',
-                }}
-              >
-                Sign In
-              </Button>
-              
-              <Button
-                as={RouterLink}
-                to="/register"
-                size="lg"
-                variant="outline"
-                colorScheme="blue"
-                rounded="full"
-                px={8}
-                _hover={{
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'sm',
-                }}
-              >
-                Create Account
-              </Button>
-            </HStack>
-            
-            <Box pt={16}>
-              <Text fontSize="xl" fontWeight="bold" mb={8}>
-                Features include:
+                Smart City Operations & Planning System
+              </Heading>
+              <Text fontSize="xl" mb={6} color={subtitleColor}>
+                Empowering urban management with real-time analytics and insights for smarter, more sustainable cities.
               </Text>
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={10}>
-                <VStack>
-                  <Icon as={FiBarChart2} boxSize={10} color="blue.500" />
-                  <Text fontWeight="bold">Real-time Data</Text>
-                  <Text color={textColor}>Monitor metrics as they happen</Text>
-                </VStack>
-                <VStack>
-                  <Icon as={FiBell} boxSize={10} color="blue.500" />
-                  <Text fontWeight="bold">Smart Alerts</Text>
-                  <Text color={textColor}>Get notified when thresholds are crossed</Text>
-                </VStack>
-                <VStack>
-                  <Icon as={FiMapPin} boxSize={10} color="blue.500" />
-                  <Text fontWeight="bold">City Monitoring</Text>
-                  <Text color={textColor}>Track multiple cities at once</Text>
-                </VStack>
-                <VStack>
-                  <Icon as={FiUsers} boxSize={10} color="blue.500" />
-                  <Text fontWeight="bold">User Management</Text>
-                  <Text color={textColor}>Admin controls and permissions</Text>
-                </VStack>
-              </SimpleGrid>
+              <HStack spacing={4}>
+                {user ? (
+                  <Button
+                    as={RouterLink}
+                    to={user.role === 'admin' ? '/admin' : '/dashboard'}
+                    colorScheme="blue"
+                    size="lg"
+                    rightIcon={<FiArrowRight />}
+                  >
+                    Go to Dashboard
+                  </Button>
+                ) : (
+                  <Button
+                    as={RouterLink}
+                    to="/login"
+                    colorScheme="blue"
+                    size="lg"
+                    rightIcon={<FiArrowRight />}
+                  >
+                    Login to System
+                  </Button>
+                )}
+                <Button
+                  as={RouterLink}
+                  to="/city-map"
+                  variant="outline"
+                  colorScheme="blue"
+                  size="lg"
+                >
+                  Explore City Map
+                </Button>
+              </HStack>
             </Box>
-          </VStack>
-        )}
+            <Box maxW={{ base: '100%', md: '50%' }} pl={{ base: 0, md: 10 }}>
+              <Image
+                src="/assets/smart-city.svg"
+                alt="Smart City Illustration"
+                w="full"
+                h="auto"
+              />
+            </Box>
+          </Flex>
+        </Container>
+      </Box>
+
+      {/* Weather Highlights Section */}
+      <Container maxW="container.xl" py={10}>
+        <Heading as="h2" size="xl" mb={6} color={textColor}>
+          Weather Highlights
+        </Heading>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={10}>
+          {MAJOR_CITIES.map(city => (
+            <WeatherCard key={city} city={city} variant="compact" />
+          ))}
+        </SimpleGrid>
       </Container>
+      
+      {/* Traffic Map Showcase */}
+      <Box py={10} bg={useColorModeValue('gray.50', 'gray.800')}>
+        <Container maxW="container.xl">
+          <Heading as="h2" size="xl" mb={6} color={textColor}>
+            Real-Time Traffic Monitoring
+          </Heading>
+          <Text fontSize="lg" mb={8} color={subtitleColor}>
+            Our platform provides advanced real-time traffic monitoring capabilities with TomTom Maps integration.
+          </Text>
+          
+          <Box 
+            borderRadius="lg" 
+            overflow="hidden" 
+            boxShadow="xl" 
+            bg={cardBg} 
+            borderWidth="1px" 
+            borderColor={borderColor}
+            mb={6}
+          >
+            <TomTomMap 
+              city="Mumbai" 
+              height="500px" 
+              showTraffic={true} 
+              showIncidents={true} 
+            />
+          </Box>
+          
+          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={8}>
+            <FeatureCard
+              icon={FiMapPin}
+              title="Live Traffic Data"
+              description="Monitor traffic congestion, incidents, and flow in real-time across the city."
+            />
+            <FeatureCard
+              icon={FiAlertCircle}
+              title="Incident Tracking"
+              description="Track and respond to traffic incidents, road closures, and other events instantly."
+            />
+            <FeatureCard
+              icon={FiActivity}
+              title="Traffic Trends"
+              description="Analyze traffic patterns and trends to optimize city infrastructure and planning."
+            />
+          </SimpleGrid>
+        </Container>
+      </Box>
+      
+      {/* Features Section */}
+      <Box py={12} bg={featureBg}>
+        <Container maxW="container.xl">
+          <Heading as="h2" size="xl" mb={10} textAlign="center" color={textColor}>
+            Key Features
+          </Heading>
+          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={10}>
+            <FeatureCard
+              icon={FiMapPin}
+              title="City Visualization"
+              description="Interactive maps with real-time data overlays for traffic, air quality, and energy consumption."
+            />
+            <FeatureCard
+              icon={FiBarChart2}
+              title="Advanced Analytics"
+              description="Comprehensive dashboards with predictive analytics to identify patterns and trends."
+            />
+            <FeatureCard
+              icon={FiActivity}
+              title="Live Monitoring"
+              description="24/7 monitoring of critical infrastructure and environmental conditions across the city."
+            />
+            <FeatureCard
+              icon={FiUsers}
+              title="Multi-User Platform"
+              description="Role-based access for citizens, city officials, and administrators with tailored experiences."
+            />
+            <FeatureCard
+              icon={FiBarChart2}
+              title="Actionable Insights"
+              description="Turn data into meaningful insights with powerful visualization tools and recommendations."
+            />
+            <FeatureCard
+              icon={FiActivity}
+              title="Alert Management"
+              description="Proactive alert system for critical events with integrated response management."
+            />
+          </SimpleGrid>
+        </Container>
+      </Box>
+      
+      {/* Stats Section */}
+      <Container maxW="container.xl" py={16}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={8}>
+          <StatCard number="6" label="Connected Cities" />
+          <StatCard number="250+" label="Data Points" />
+          <StatCard number="24/7" label="Monitoring" />
+          <StatCard number="99.9%" label="System Uptime" />
+        </SimpleGrid>
+      </Container>
+      
+      {/* CTA Section */}
+      <Box bg={accentColor} py={16}>
+        <Container maxW="container.md" textAlign="center">
+          <Heading color="white" size="xl" mb={4}>
+            Ready to experience smart city management?
+          </Heading>
+          <Text color="whiteAlpha.900" fontSize="lg" mb={8}>
+            Join the platform that's transforming urban operations and planning.
+          </Text>
+          <Button
+            as={RouterLink}
+            to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/login'}
+            size="lg"
+            colorScheme="whiteAlpha"
+            rightIcon={<FiArrowRight />}
+          >
+            {user ? 'Go to Dashboard' : 'Get Started'}
+          </Button>
+        </Container>
+      </Box>
     </Box>
+  );
+};
+
+// Helper Components
+const FeatureCard = ({ icon, title, description }: { icon: any; title: string; description: string }) => {
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  
+  return (
+    <Card bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="lg" shadow="md">
+      <CardBody>
+        <Flex direction="column" align="center" textAlign="center">
+          <Box
+            bg={useColorModeValue('blue.100', 'blue.900')}
+            p={3}
+            borderRadius="full"
+            mb={4}
+          >
+            <Icon as={icon} boxSize={6} color={useColorModeValue('blue.500', 'blue.200')} />
+          </Box>
+          <Heading as="h3" size="md" mb={2}>
+            {title}
+          </Heading>
+          <Text color={useColorModeValue('gray.600', 'gray.400')}>
+            {description}
+          </Text>
+        </Flex>
+      </CardBody>
+    </Card>
+  );
+};
+
+const StatCard = ({ number, label }: { number: string; label: string }) => {
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  
+  return (
+    <Card bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="lg" shadow="md">
+      <CardBody>
+        <VStack spacing={2} align="center" textAlign="center">
+          <Heading size="2xl" color={useColorModeValue('blue.500', 'blue.300')}>
+            {number}
+          </Heading>
+          <Text fontWeight="medium" color={useColorModeValue('gray.700', 'gray.300')}>
+            {label}
+          </Text>
+        </VStack>
+      </CardBody>
+    </Card>
   );
 };
 

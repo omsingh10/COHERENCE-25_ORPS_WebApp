@@ -22,6 +22,7 @@ import {
   FormLabel,
   Button,
   useToast,
+  Icon,
 } from '@chakra-ui/react';
 import {
   FiHome,
@@ -34,12 +35,15 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+// Import our custom ErrorBoundary component
+import ErrorBoundary from '../components/ErrorBoundary';
 
 // Import our new live components
 import LiveChart from '../components/LiveChart';
 import LiveMap from '../components/LiveMap';
 import { getAllCities, getCityDataStream, getInitialCityData } from '../utils/realTimeData';
 import { Subscription } from 'rxjs';
+import TomTomMap from '../components/TomTomMap';
 
 // Sidebar menu item
 const SidebarItem = ({ icon, to, children, isActive = false }: { icon: React.ReactElement, to: string, children: React.ReactNode, isActive?: boolean }) => {
@@ -372,15 +376,114 @@ const Analytics = () => {
             
             {/* Traffic Tab */}
             <TabPanel>
-              <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6} mb={6}>
-                <LiveMap city={selectedCity} height="400px" />
-                <LiveChart 
-                  city={selectedCity} 
-                  dataType="trafficDensity" 
-                  title="Real-time Traffic Density" 
-                  color="#E53E3E" 
-                  height="400px" 
-                />
+              {/* Traffic Analysis Section */}
+              <Box 
+                p={4} 
+                borderRadius="lg" 
+                bg={useColorModeValue('white', 'gray.800')}
+                shadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
+                mb={4}
+              >
+                <Heading size="md" mb={4}>Live Traffic Map - {selectedCity}</Heading>
+                
+                <Text fontSize="sm" mb={4} color={useColorModeValue('gray.600', 'gray.400')}>
+                  Real-time traffic visualization for {selectedCity}. Green indicates free-flowing traffic, 
+                  yellow indicates moderate congestion, and red indicates heavy congestion.
+                </Text>
+                
+                <Box position="relative" height="500px" mb={4}>
+                  <ErrorBoundary
+                    fallbackRender={({ error }) => (
+                      <Box height="100%" display="flex" alignItems="center" justifyContent="center" bg={useColorModeValue("gray.100", "gray.700")} borderRadius="md">
+                        <VStack spacing={3} p={4} textAlign="center">
+                          <Icon as={FiAlertCircle} boxSize={10} color="orange.500" />
+                          <Text fontWeight="medium">Map loading failed</Text>
+                          <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")}>
+                            {error?.message || "Unable to load the traffic map. Using alternative visualization."}
+                          </Text>
+                          <Box w="100%" h="300px">
+                            <LiveMap city={selectedCity} height="100%" width="100%" />
+                          </Box>
+                        </VStack>
+                      </Box>
+                    )}
+                    onError={(error) => {
+                      console.error("Map error caught by boundary:", error);
+                      // Log the error to monitoring service if available
+                    }}
+                    onReset={() => {
+                      console.log("ErrorBoundary reset");
+                    }}
+                  >
+                    <TomTomMap
+                      city={selectedCity}
+                      height="100%"
+                      showTraffic={true}
+                      showIncidents={true}
+                    />
+                  </ErrorBoundary>
+                </Box>
+                
+                <HStack spacing={4} mt={2}>
+                  <Flex align="center">
+                    <Box w="12px" h="12px" bg="green.500" borderRadius="full" mr={2}></Box>
+                    <Text fontSize="sm">Light Traffic</Text>
+                  </Flex>
+                  <Flex align="center">
+                    <Box w="12px" h="12px" bg="yellow.500" borderRadius="full" mr={2}></Box>
+                    <Text fontSize="sm">Moderate Traffic</Text>
+                  </Flex>
+                  <Flex align="center">
+                    <Box w="12px" h="12px" bg="red.500" borderRadius="full" mr={2}></Box>
+                    <Text fontSize="sm">Heavy Traffic</Text>
+                  </Flex>
+                </HStack>
+              </Box>
+              
+              {/* Traffic Statistics Grid */}
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                <Box 
+                  p={4} 
+                  borderRadius="lg" 
+                  bg={useColorModeValue('white', 'gray.800')}
+                  shadow="sm"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                >
+                  <Heading size="md" mb={4}>Traffic Density</Heading>
+                  <Text>Average traffic density over the past 6 hours</Text>
+                  {/* Traffic Density Graph would go here */}
+                  <Box h="200px" bg={useColorModeValue('gray.100', 'gray.700')} borderRadius="md" mt={4}></Box>
+                </Box>
+                
+                <Box 
+                  p={4} 
+                  borderRadius="lg" 
+                  bg={useColorModeValue('white', 'gray.800')}
+                  shadow="sm"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                >
+                  <Heading size="md" mb={4}>Congestion Points</Heading>
+                  <Text>Current congestion hotspots in {selectedCity}</Text>
+                  {/* Congestion Points List would go here */}
+                  <VStack spacing={3} align="stretch" mt={4}>
+                    <Box p={3} bg={useColorModeValue('red.50', 'red.900')} borderRadius="md">
+                      <Text fontWeight="bold">Main Highway Junction</Text>
+                      <Text fontSize="sm">Severe congestion - 15 min delay</Text>
+                    </Box>
+                    <Box p={3} bg={useColorModeValue('yellow.50', 'yellow.900')} borderRadius="md">
+                      <Text fontWeight="bold">Downtown Area</Text>
+                      <Text fontSize="sm">Moderate congestion - 8 min delay</Text>
+                    </Box>
+                    <Box p={3} bg={useColorModeValue('green.50', 'green.900')} borderRadius="md">
+                      <Text fontWeight="bold">Eastern Suburbs</Text>
+                      <Text fontSize="sm">Light traffic - 2 min delay</Text>
+                    </Box>
+                  </VStack>
+                </Box>
               </SimpleGrid>
             </TabPanel>
             

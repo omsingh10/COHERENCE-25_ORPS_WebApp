@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .server-info {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .instructions {
+            background-color: #e9f7ef;
+            border-left: 4px solid #27ae60;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+        }
+        .code {
+            font-family: monospace;
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Server Test Page</h1>
+    
+    <div class="server-info">
+        <p><span class="success">✓ Success!</span> If you can see this page, your local server is running.</p>
+        <p>Server information:</p>
+        <ul>
+            <li>URL: <span id="current-url"></span></li>
+            <li>Hostname: <span id="hostname"></span></li>
+            <li>Port: <span id="port"></span></li>
+            <li>Protocol: <span id="protocol"></span></li>
+        </ul>
+    </div>
+    
+    <div class="instructions">
+        <h2>Next Steps</h2>
+        <p>To access your React application:</p>
+        <ol>
+            <li>Make sure your development server is running (<span class="code">npm run dev</span>)</li>
+            <li>Open your browser and navigate to the URL shown above</li>
+            <li>If you're trying to access from a mobile device, make sure both devices are on the same network</li>
+        </ol>
+    </div>
+    
+    <script>
+        // Display server information
+        document.getElementById('current-url').textContent = window.location.href;
+        document.getElementById('hostname').textContent = window.location.hostname || 'localhost';
+        document.getElementById('port').textContent = window.location.port || '(default)';
+        document.getElementById('protocol').textContent = window.location.protocol;
+        
+        // Check if running locally
+        const isLocalhost = 
+            window.location.hostname === 'localhost' || 
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname === '[::1]' ||
+            window.location.hostname === '' ||
+            window.location.hostname.match(
+                /^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/
+            );
+            
+        if (isLocalhost) {
+            const serverInfo = document.querySelector('.server-info');
+            const newP = document.createElement('p');
+            newP.innerHTML = '<strong>This is running on localhost/development environment.</strong>';
+            serverInfo.appendChild(newP);
+        }
+    </script>
+</body>
+</html> 
