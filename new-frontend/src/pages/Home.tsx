@@ -67,8 +67,14 @@ const Home = () => {
     }
   };
 
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const textColor = useColorModeValue('gray.600', 'gray.300');
+  const cardBg = useColorModeValue('white', 'gray.700');
+  const cardBorder = useColorModeValue('gray.100', 'gray.600');
+  const statColor = useColorModeValue('blue.600', 'blue.200');
+
   return (
-    <Box bg="white" minH="100vh">
+    <Box bg={useColorModeValue('white', 'gray.900')} minH="100vh">
       <Container maxW="container.xl" py={10}>
         {isAuthenticated ? (
           // Logged-in view
@@ -79,7 +85,7 @@ const Home = () => {
                   Welcome back, {user?.name}
                   {user?.role === 'admin' && <Badge ml={2} colorScheme="purple">Admin</Badge>}
                 </Heading>
-                <Text color="gray.600" fontSize="lg">
+                <Text color={textColor} fontSize="lg">
                   {user?.role === 'admin' 
                     ? 'Manage your smart city infrastructure from your admin dashboard'
                     : 'Track real-time city metrics and personalized alerts'}
@@ -102,19 +108,19 @@ const Home = () => {
               {getQuickStats().map((stat, index) => (
                 <Box 
                   key={index} 
-                  bg="white" 
+                  bg={cardBg} 
                   p={6} 
                   borderRadius="lg" 
                   boxShadow="md" 
                   border="1px" 
-                  borderColor="gray.100"
+                  borderColor={cardBorder}
                 >
                   <Stat>
-                    <StatLabel fontSize="md" color="gray.500">{stat.label}</StatLabel>
-                    <StatNumber fontSize="2xl" fontWeight="bold" color="blue.600">
+                    <StatLabel fontSize="md" color={textColor}>{stat.label}</StatLabel>
+                    <StatNumber fontSize="2xl" fontWeight="bold" color={statColor}>
                       {stat.value}
                     </StatNumber>
-                    <StatHelpText>{stat.helpText}</StatHelpText>
+                    <StatHelpText color={textColor}>{stat.helpText}</StatHelpText>
                   </Stat>
                 </Box>
               ))}
@@ -125,18 +131,18 @@ const Home = () => {
               {getFeatureCards().map((feature, index) => (
                 <Box
                   key={index}
-                  bg="white"
+                  bg={cardBg}
                   p={6}
                   borderRadius="lg"
                   boxShadow="md"
                   border="1px"
-                  borderColor="gray.100"
+                  borderColor={cardBorder}
                   transition="transform 0.3s"
                   _hover={{ transform: 'translateY(-5px)', boxShadow: 'lg' }}
                 >
                   <Icon as={feature.icon} boxSize={10} color="blue.500" mb={4} />
                   <Heading size="md" mb={2}>{feature.title}</Heading>
-                  <Text color="gray.600">{feature.description}</Text>
+                  <Text color={textColor}>{feature.description}</Text>
                 </Box>
               ))}
             </SimpleGrid>
@@ -153,7 +159,7 @@ const Home = () => {
               OPRS Dashboard
             </Heading>
             
-            <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600" maxW="2xl">
+            <Text fontSize={{ base: 'lg', md: 'xl' }} color={textColor} maxW="2xl">
               A powerful operations dashboard for monitoring and managing your systems.
               Get real-time insights, analytics, and alerts all in one place.
             </Text>
@@ -199,22 +205,22 @@ const Home = () => {
                 <VStack>
                   <Icon as={FiBarChart2} boxSize={10} color="blue.500" />
                   <Text fontWeight="bold">Real-time Data</Text>
-                  <Text color="gray.600">Monitor metrics as they happen</Text>
+                  <Text color={textColor}>Monitor metrics as they happen</Text>
                 </VStack>
                 <VStack>
                   <Icon as={FiBell} boxSize={10} color="blue.500" />
                   <Text fontWeight="bold">Smart Alerts</Text>
-                  <Text color="gray.600">Get notified when thresholds are crossed</Text>
+                  <Text color={textColor}>Get notified when thresholds are crossed</Text>
                 </VStack>
                 <VStack>
                   <Icon as={FiMapPin} boxSize={10} color="blue.500" />
                   <Text fontWeight="bold">City Monitoring</Text>
-                  <Text color="gray.600">Track multiple cities at once</Text>
+                  <Text color={textColor}>Track multiple cities at once</Text>
                 </VStack>
                 <VStack>
                   <Icon as={FiUsers} boxSize={10} color="blue.500" />
                   <Text fontWeight="bold">User Management</Text>
-                  <Text color="gray.600">Admin controls and permissions</Text>
+                  <Text color={textColor}>Admin controls and permissions</Text>
                 </VStack>
               </SimpleGrid>
             </Box>

@@ -26,6 +26,7 @@ import {
 import { HamburgerIcon, BellIcon } from '@chakra-ui/icons';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import ColorModeToggle from './ColorModeToggle';
 
 const Navbar = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -64,7 +65,7 @@ const Navbar = () => {
             fontFamily={'heading'}
             fontWeight="bold"
             fontSize="xl"
-            color={useColorModeValue('blue.600', 'white')}
+            color={useColorModeValue('blue.600', 'blue.200')}
             as={RouterLink}
             to="/"
           >
@@ -120,6 +121,9 @@ const Navbar = () => {
         </HStack>
 
         <Stack direction={'row'} spacing={4}>
+          {/* Color Mode Toggle - Always visible */}
+          <ColorModeToggle />
+          
           {isAuthenticated ? (
             <Stack direction="row" spacing={2} align="center">
               {/* Notifications */}
@@ -183,6 +187,11 @@ const Navbar = () => {
           <DrawerHeader>Menu</DrawerHeader>
           <DrawerBody>
             <VStack spacing={4} align="start">
+              {/* Color Mode Toggle in mobile drawer */}
+              <Flex w="100%" justify="flex-end" mb={2}>
+                <ColorModeToggle />
+              </Flex>
+              
               {isAuthenticated ? (
                 <>
                   <Text as={RouterLink} to={dashboardLink} onClick={onClose} fontWeight="semibold">

@@ -40,11 +40,11 @@ import {
   Image,
   Spinner,
 } from '@chakra-ui/react';
-import { FiHome, FiPieChart, FiMap, FiAlertCircle, FiSettings, FiPlus, FiFilter, FiRefreshCw, FiMoreVertical, FiTrash2, FiEdit, FiUpload, FiFile } from 'react-icons/fi';
+import { FiHome, FiPieChart, FiMap, FiAlertCircle, FiSettings, FiPlus, FiFilter, FiRefreshCw, FiMoreVertical, FiTrash2, FiEdit, FiUpload, FiFile, FiFileText } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
-// Sidebar menu item
+// Sidebar menu item using proper React Router Link
 const SidebarItem = ({ icon, to, children, isActive = false }: { icon: React.ReactElement, to: string, children: React.ReactNode, isActive?: boolean }) => {
   const activeBg = useColorModeValue('blue.50', 'blue.900');
   const activeColor = useColorModeValue('blue.700', 'blue.200');
@@ -76,6 +76,8 @@ const SidebarItem = ({ icon, to, children, isActive = false }: { icon: React.Rea
 
 // Sidebar component
 const Sidebar = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   
@@ -95,11 +97,28 @@ const Sidebar = () => {
         </Text>
       </Flex>
       <VStack spacing={1} align="stretch" mt={5}>
-        <SidebarItem icon={<FiHome size={18} />} to="/user-dashboard">Dashboard</SidebarItem>
-        <SidebarItem icon={<FiPieChart size={18} />} to="/analytics">Analytics</SidebarItem>
-        <SidebarItem icon={<FiMap size={18} />} to="/city-map">City Map</SidebarItem>
-        <SidebarItem icon={<FiAlertCircle size={18} />} to="/alerts" isActive>Alerts</SidebarItem>
-        <SidebarItem icon={<FiSettings size={18} />} to="/settings">Settings</SidebarItem>
+        {isAdmin ? (
+          // Admin sidebar items
+          <>
+            <SidebarItem icon={<FiPieChart size={18} />} to="/admin">Admin Dashboard</SidebarItem>
+            <SidebarItem icon={<FiHome size={18} />} to="/users">User Management</SidebarItem>
+            <SidebarItem icon={<FiAlertCircle size={18} />} to="/alerts" isActive>Alert Management</SidebarItem>
+            <SidebarItem icon={<FiMap size={18} />} to="/city-map">City Map</SidebarItem>
+            <SidebarItem icon={<FiPieChart size={18} />} to="/analytics">System Analytics</SidebarItem>
+            <SidebarItem icon={<FiFileText size={18} />} to="/reports">Reports</SidebarItem>
+            <SidebarItem icon={<FiSettings size={18} />} to="/settings">Settings</SidebarItem>
+          </>
+        ) : (
+          // User sidebar items
+          <>
+            <SidebarItem icon={<FiHome size={18} />} to="/user-dashboard">Dashboard</SidebarItem>
+            <SidebarItem icon={<FiPieChart size={18} />} to="/analytics">Analytics</SidebarItem>
+            <SidebarItem icon={<FiMap size={18} />} to="/city-map">City Map</SidebarItem>
+            <SidebarItem icon={<FiAlertCircle size={18} />} to="/alerts" isActive>Alerts</SidebarItem>
+            <SidebarItem icon={<FiFileText size={18} />} to="/reports">Reports</SidebarItem>
+            <SidebarItem icon={<FiSettings size={18} />} to="/settings">Settings</SidebarItem>
+          </>
+        )}
       </VStack>
     </Box>
   );
@@ -266,12 +285,8 @@ const statusColors = {
 
 const Alerts = () => {
   const { user } = useAuth();
-  const [selectedCity, setSelectedCity] = useState(user?.city || 'Mumbai');
+  const [selectedCity, setSelectedCity] = useState(user?.city || 'All Cities');
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [alertType, setAlertType] = useState('');
-  const [alertSeverity, setAlertSeverity] = useState('Medium');
-  const [alertMessage, setAlertMessage] = useState('');
-  const [alertLocation, setAlertLocation] = useState('');
   const [filter, setFilter] = useState('all');
   const [alerts, setAlerts] = useState(initialAlerts);
   const [filteredAlerts, setFilteredAlerts] = useState(initialAlerts);
@@ -285,15 +300,18 @@ const Alerts = () => {
   useEffect(() => {
     let filtered = [...alerts];
     
+    // Filter by city if a specific city is selected
     if (selectedCity !== 'All Cities') {
       filtered = filtered.filter(alert => alert.city === selectedCity);
     }
     
-    if (filter === 'all') return filtered;
-    if (filter === 'high') return filtered.filter(alert => alert.severity === 'high');
-    if (filter === 'medium') return filtered.filter(alert => alert.severity === 'medium');
-    if (filter === 'low') return filtered.filter(alert => alert.severity === 'low');
-    return filtered;
+    // Further filter by severity if needed
+    if (filter !== 'all') {
+      filtered = filtered.filter(alert => alert.severity === filter);
+    }
+    
+    // Update the filteredAlerts state
+    setFilteredAlerts(filtered);
   }, [alerts, selectedCity, filter]);
   
   // Format date to readable format
@@ -451,6 +469,22 @@ const Alerts = () => {
             </Select>
           </HStack>
         </Flex>
+        
+        {/* City Selection */}
+        {user?.role === 'admin' && (
+          <Box mb={4}>
+            <Select 
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+              bg="white"
+              borderRadius="lg"
+            >
+              {cities.map(city => (
+                <option key={city} value={city}>{city}</option>
+              ))}
+            </Select>
+          </Box>
+        )}
         
         {/* Alerts List */}
         <Card borderRadius="lg" boxShadow="sm" bg={cardBg} mb={6}>

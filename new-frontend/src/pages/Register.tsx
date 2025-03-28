@@ -72,7 +72,7 @@ const Register = () => {
       <Stack spacing={8}>
         <Stack align={'center'}>
           <Heading fontSize={'4xl'}>Create your account</Heading>
-          <Text fontSize={'lg'} color={'gray.600'}>
+          <Text fontSize={'lg'} color={useColorModeValue('gray.600', 'gray.400')}>
             to start using OPRS Dashboard
           </Text>
         </Stack>
@@ -148,11 +148,28 @@ const Register = () => {
                     Login
                   </Link>
                 </Text>
-                <Box borderWidth="1px" borderRadius="md" p={3} mt={2} bg="gray.50">
-                  <Text align={'center'} fontSize="sm" color="gray.700" fontWeight="medium" mb={2}>
+                <Box 
+                  borderWidth="1px" 
+                  borderRadius="md" 
+                  p={3} 
+                  mt={2} 
+                  bg={useColorModeValue('gray.50', 'gray.600')}
+                  borderColor={useColorModeValue('gray.200', 'gray.500')}
+                >
+                  <Text 
+                    align={'center'} 
+                    fontSize="sm" 
+                    color={useColorModeValue('gray.700', 'gray.200')} 
+                    fontWeight="medium" 
+                    mb={2}
+                  >
                     For demo purposes, you can use any valid combination of name, email, and password, or use the existing accounts:
                   </Text>
-                  <UnorderedList fontSize="sm" color="gray.600" pl={4}>
+                  <UnorderedList 
+                    fontSize="sm" 
+                    color={useColorModeValue('gray.600', 'gray.300')} 
+                    pl={4}
+                  >
                     <ListItem>Admin: admin@smartcity.com / admin123</ListItem>
                     <ListItem>User: user1@smartcity.com / user123</ListItem>
                   </UnorderedList>
