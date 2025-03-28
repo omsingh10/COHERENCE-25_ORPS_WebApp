@@ -39,8 +39,16 @@ import {
   useToast,
   Image,
   Spinner,
+  Tag,
+  TagLabel,
+  TagLeftIcon,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
 } from '@chakra-ui/react';
-import { FiHome, FiPieChart, FiMap, FiAlertCircle, FiSettings, FiPlus, FiFilter, FiRefreshCw, FiMoreVertical, FiTrash2, FiEdit, FiUpload, FiFile, FiFileText } from 'react-icons/fi';
+import { FiHome, FiPieChart, FiMap, FiAlertCircle, FiSettings, FiPlus, FiFilter, FiRefreshCw, FiMoreVertical, FiTrash2, FiEdit, FiUpload, FiFile, FiFileText, FiInfo, FiCheckCircle, FiX } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -283,147 +291,320 @@ const statusColors = {
   resolved: 'green'
 };
 
+// Alert type definition
+interface Alert {
+  id: string;
+  city: string;
+  type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  location: string;
+  timestamp: string;
+  status: 'new' | 'acknowledged' | 'resolved';
+}
+
+// Component for displaying a single alert
+const AlertCard = ({ alert, onAcknowledge, onResolve }: { 
+  alert: Alert; 
+  onAcknowledge: (id: string) => void; 
+  onResolve: (id: string) => void; 
+}) => {
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const subtitleColor = useColorModeValue('gray.600', 'gray.400');
+  
+  // Determine severity color
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'low': return 'green';
+      case 'medium': return 'yellow';
+      case 'high': return 'orange';
+      case 'critical': return 'red';
+      default: return 'gray';
+    }
+  };
+  
+  // Format timestamp for display
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
+  
+  return (
+    <Box 
+      p={4} 
+      borderWidth="1px" 
+      borderRadius="lg" 
+      overflow="hidden"
+      bg={bgColor}
+      borderColor={borderColor}
+      boxShadow="sm"
+      position="relative"
+    >
+      <Flex justify="space-between" align="flex-start" mb={2}>
+        <VStack align="start" spacing={1}>
+          <Heading size="md">{alert.type}</Heading>
+          <Text fontSize="sm" color={subtitleColor}>{alert.city} • {formatTime(alert.timestamp)}</Text>
+        </VStack>
+        <Badge colorScheme={getSeverityColor(alert.severity)} px={2} py={1} borderRadius="md">
+          {alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)}
+        </Badge>
+      </Flex>
+      
+      <Text my={2}>{alert.message}</Text>
+      <Text fontSize="sm" color={subtitleColor} mb={4}>Location: {alert.location}</Text>
+      
+      <Divider mb={3} />
+      
+      <Flex justify="space-between" align="center">
+        <Badge 
+          colorScheme={
+            alert.status === 'new' ? 'blue' : 
+            alert.status === 'acknowledged' ? 'purple' : 
+            'green'
+          }
+        >
+          {alert.status.charAt(0).toUpperCase() + alert.status.slice(1)}
+        </Badge>
+        
+        <HStack>
+          {alert.status === 'new' && (
+            <Button 
+              size="sm" 
+              leftIcon={<FiInfo />} 
+              colorScheme="blue" 
+              variant="outline"
+              onClick={() => onAcknowledge(alert.id)}
+            >
+              Acknowledge
+            </Button>
+          )}
+          {(alert.status === 'new' || alert.status === 'acknowledged') && (
+            <Button 
+              size="sm" 
+              leftIcon={<FiCheckCircle />} 
+              colorScheme="green" 
+              variant={alert.status === 'new' ? 'outline' : 'solid'}
+              onClick={() => onResolve(alert.id)}
+            >
+              Resolve
+            </Button>
+          )}
+        </HStack>
+      </Flex>
+    </Box>
+  );
+};
+
 const Alerts = () => {
   const { user } = useAuth();
-  const [selectedCity, setSelectedCity] = useState(user?.city || 'All Cities');
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [filter, setFilter] = useState('all');
-  const [alerts, setAlerts] = useState(initialAlerts);
-  const [filteredAlerts, setFilteredAlerts] = useState(initialAlerts);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  
   const toast = useToast();
   
-  // Filter alerts based on selection
-  useEffect(() => {
-    let filtered = [...alerts];
-    
-    // Filter by city if a specific city is selected
-    if (selectedCity !== 'All Cities') {
-      filtered = filtered.filter(alert => alert.city === selectedCity);
-    }
-    
-    // Further filter by severity if needed
-    if (filter !== 'all') {
-      filtered = filtered.filter(alert => alert.severity === filter);
-    }
-    
-    // Update the filteredAlerts state
-    setFilteredAlerts(filtered);
-  }, [alerts, selectedCity, filter]);
+  // Color mode values
+  const bg = useColorModeValue('gray.50', 'gray.900');
+  const headerBg = useColorModeValue('white', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'gray.100');
+  const subtitleColor = useColorModeValue('gray.600', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
   
-  // Format date to readable format
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    
-    if (diffMin < 1) return 'Just now';
-    if (diffMin < 60) return `${diffMin} minutes ago`;
-    
-    const diffHour = Math.floor(diffMin / 60);
-    if (diffHour < 24) return `${diffHour} hours ago`;
-    
-    return date.toLocaleDateString();
+  // State for alerts and filters
+  const [selectedCity, setSelectedCity] = useState<string>(user?.city || 'all');
+  const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState(0);
+  
+  // Mock data for alerts
+  const [alerts, setAlerts] = useState<Alert[]>([
+    {
+      id: '1',
+      city: 'Mumbai',
+      type: 'Traffic Congestion',
+      severity: 'high',
+      message: 'Major traffic congestion on Western Express Highway due to an accident.',
+      location: 'Western Express Highway, Andheri',
+      timestamp: '2023-03-15T08:30:00',
+      status: 'new'
+    },
+    {
+      id: '2',
+      city: 'Delhi',
+      type: 'Air Quality',
+      severity: 'critical',
+      message: 'Hazardous air quality levels detected. AQI exceeding 300 in multiple areas.',
+      location: 'Central Delhi',
+      timestamp: '2023-03-15T10:15:00',
+      status: 'acknowledged'
+    },
+    {
+      id: '3',
+      city: 'Bangalore',
+      type: 'Power Outage',
+      severity: 'medium',
+      message: 'Scheduled power outage for maintenance work.',
+      location: 'Koramangala, HSR Layout',
+      timestamp: '2023-03-14T14:00:00',
+      status: 'resolved'
+    },
+    {
+      id: '4',
+      city: 'Mumbai',
+      type: 'Flooding',
+      severity: 'high',
+      message: 'Street flooding reported due to heavy rainfall. Avoid low-lying areas.',
+      location: 'Dadar, Parel',
+      timestamp: '2023-03-14T16:45:00',
+      status: 'acknowledged'
+    },
+    {
+      id: '5',
+      city: 'Chennai',
+      type: 'Water Supply',
+      severity: 'medium',
+      message: 'Water supply will be interrupted for 6 hours for pipeline maintenance.',
+      location: 'T. Nagar, Mylapore',
+      timestamp: '2023-03-15T09:00:00',
+      status: 'new'
+    },
+    {
+      id: '6',
+      city: 'Hyderabad',
+      type: 'Traffic Diversion',
+      severity: 'low',
+      message: 'Traffic diversion in place due to construction work.',
+      location: 'Banjara Hills, Jubilee Hills',
+      timestamp: '2023-03-15T11:30:00',
+      status: 'new'
+    }
+  ]);
+  
+  // Form state for new alert
+  const [newAlert, setNewAlert] = useState({
+    city: user?.city || 'Mumbai',
+    type: 'Traffic Congestion',
+    severity: 'medium',
+    message: '',
+    location: ''
+  });
+  
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewAlert(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
   
-  // Handle Alert Creation
-  const handleCreateAlert = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    // Get form data
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    const city = formData.get('city') as string;
-    const type = formData.get('type') as string;
-    const severity = formData.get('severity') as string;
-    const message = formData.get('message') as string;
-    
-    // In a real application, you would upload the image and get a URL
-    // For this demo, we'll use the preview URL if an image was selected
-    
-    // Simulate API request delay
-    setTimeout(() => {
-      const newAlert = {
-        id: alerts.length + 1,
-        city,
-        type,
-        severity,
-        message,
-        createdAt: new Date().toISOString(),
-        status: 'active',
-        image: imagePreview
-      };
-      
-      setAlerts([newAlert, ...alerts]);
-      
+  // Create new alert
+  const handleCreateAlert = () => {
+    // Validation
+    if (!newAlert.message || !newAlert.location) {
       toast({
-        title: 'Alert created',
-        description: `The alert for ${city} has been created successfully.`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        status: 'error',
+        duration: 3000,
+        isClosable: true
       });
-      
-      setIsLoading(false);
-      setSelectedImage(null);
-      setImagePreview(null);
-      onClose();
-      
-      // Reset form (would be done differently in a real app)
-      form.reset();
-    }, 1500);
-  };
-  
-  // Handle image upload
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedImage(file);
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      return;
     }
-  };
-  
-  // Update alert status
-  const updateAlertStatus = (id: number, newStatus: string) => {
-    const updatedAlerts = alerts.map(alert => 
-      alert.id === id ? { ...alert, status: newStatus } : alert
-    );
-    setAlerts(updatedAlerts);
     
-    toast({
-      title: 'Alert updated',
-      description: `Alert status changed to ${newStatus}.`,
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
+    // Create new alert object
+    const alert: Alert = {
+      id: Date.now().toString(),
+      ...newAlert,
+      severity: newAlert.severity as 'low' | 'medium' | 'high' | 'critical',
+      timestamp: new Date().toISOString(),
+      status: 'new'
+    };
+    
+    // Add to alerts list
+    setAlerts(prev => [alert, ...prev]);
+    
+    // Reset form and close modal
+    setNewAlert({
+      city: user?.city || 'Mumbai',
+      type: 'Traffic Congestion',
+      severity: 'medium',
+      message: '',
+      location: ''
     });
-  };
-  
-  // Delete an alert
-  const deleteAlert = (id: number) => {
-    setAlerts(alerts.filter(alert => alert.id !== id));
+    onClose();
     
     toast({
-      title: 'Alert deleted',
-      description: 'The alert has been removed.',
+      title: 'Alert created',
+      description: 'New alert has been created successfully',
       status: 'success',
       duration: 3000,
-      isClosable: true,
+      isClosable: true
     });
   };
   
-  const cardBg = useColorModeValue('white', 'gray.700');
+  // Handle alert acknowledgement
+  const handleAcknowledge = (id: string) => {
+    setAlerts(prev => 
+      prev.map(alert => 
+        alert.id === id 
+          ? { ...alert, status: 'acknowledged' } 
+          : alert
+      )
+    );
+    
+    toast({
+      title: 'Alert acknowledged',
+      description: 'The alert has been marked as acknowledged',
+      status: 'info',
+      duration: 3000,
+      isClosable: true
+    });
+  };
+  
+  // Handle alert resolution
+  const handleResolve = (id: string) => {
+    setAlerts(prev => 
+      prev.map(alert => 
+        alert.id === id 
+          ? { ...alert, status: 'resolved' } 
+          : alert
+      )
+    );
+    
+    toast({
+      title: 'Alert resolved',
+      description: 'The alert has been marked as resolved',
+      status: 'success',
+      duration: 3000,
+      isClosable: true
+    });
+  };
+  
+  // Filter alerts based on selected filters
+  const filteredAlerts = alerts.filter(alert => {
+    return (
+      (selectedCity === 'all' || alert.city === selectedCity) &&
+      (selectedSeverity === 'all' || alert.severity === selectedSeverity) &&
+      (selectedType === 'all' || alert.type === selectedType) &&
+      (selectedStatus === 'all' || alert.status === selectedStatus)
+    );
+  });
+  
+  // Group alerts by status for tabs
+  const alertsByStatus = {
+    all: filteredAlerts,
+    new: filteredAlerts.filter(alert => alert.status === 'new'),
+    acknowledged: filteredAlerts.filter(alert => alert.status === 'acknowledged'),
+    resolved: filteredAlerts.filter(alert => alert.status === 'resolved')
+  };
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setSelectedCity('all');
+    setSelectedSeverity('all');
+    setSelectedType('all');
+    setSelectedStatus('all');
+  };
   
   return (
     <Flex>
@@ -456,16 +637,16 @@ const Alerts = () => {
             </Button>
             
             <Select 
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
               maxW="150px"
               bg="white"
               borderRadius="lg"
             >
               <option value="all">All Alerts</option>
-              <option value="high">High Priority</option>
-              <option value="medium">Medium Priority</option>
-              <option value="low">Low Priority</option>
+              <option value="new">New</option>
+              <option value="acknowledged">Acknowledged</option>
+              <option value="resolved">Resolved</option>
             </Select>
           </HStack>
         </Flex>
@@ -487,214 +668,238 @@ const Alerts = () => {
         )}
         
         {/* Alerts List */}
-        <Card borderRadius="lg" boxShadow="sm" bg={cardBg} mb={6}>
+        <Card borderRadius="lg" boxShadow="sm" bg={useColorModeValue('white', 'gray.700')} mb={6}>
           <CardBody p={6}>
-            {filteredAlerts.length === 0 ? (
+            {alertsByStatus.all.length === 0 ? (
               <Box textAlign="center" py={10}>
                 <FiAlertCircle size={40} color="#A0AEC0" />
                 <Text mt={4} color="gray.500">No active alerts at this time</Text>
               </Box>
             ) : (
-              <VStack spacing={4} align="stretch">
-                {filteredAlerts.map(alert => (
-                  <Card key={alert.id} bg={cardBg} overflow="hidden">
-                    <CardBody>
-                      <Flex direction={{ base: 'column', md: 'row' }} gap={4}>
-                        {alert.image && (
-                          <Box 
-                            minW={{ base: '100%', md: '200px' }} 
-                            maxW={{ base: '100%', md: '200px' }}
-                            height={{ base: '180px', md: '140px' }}
-                            borderRadius="md"
-                            overflow="hidden"
-                          >
-                            <Image 
-                              src={alert.image} 
-                              alt={`Alert in ${alert.city}`}
-                              objectFit="cover"
-                              width="100%"
-                              height="100%"
-                            />
-                          </Box>
-                        )}
-                        <Box flex="1">
-                          <Flex justify="space-between" wrap="wrap" mb={2}>
-                            <HStack>
-                              <Badge colorScheme={alertTypes[alert.type as keyof typeof alertTypes] || 'gray'}>
-                                {alert.type}
-                              </Badge>
-                              <Badge colorScheme={severityColors[alert.severity as keyof typeof severityColors]}>
-                                {alert.severity} severity
-                              </Badge>
-                              <Badge colorScheme={statusColors[alert.status as keyof typeof statusColors]}>
-                                {alert.status}
-                              </Badge>
-                            </HStack>
-                            <Menu>
-                              <MenuButton 
-                                as={IconButton}
-                                icon={<FiMoreVertical />}
-                                variant="ghost"
-                                size="sm"
-                              />
-                              <MenuList>
-                                {alert.status !== 'resolved' && (
-                                  <MenuItem 
-                                    icon={<FiEdit />} 
-                                    onClick={() => updateAlertStatus(alert.id, 'resolved')}
-                                  >
-                                    Mark as Resolved
-                                  </MenuItem>
-                                )}
-                                {alert.status !== 'active' && (
-                                  <MenuItem 
-                                    icon={<FiEdit />} 
-                                    onClick={() => updateAlertStatus(alert.id, 'active')}
-                                  >
-                                    Mark as Active
-                                  </MenuItem>
-                                )}
-                                <MenuItem 
-                                  icon={<FiTrash2 />} 
-                                  color="red.500"
-                                  onClick={() => deleteAlert(alert.id)}
-                                >
-                                  Delete Alert
-                                </MenuItem>
-                              </MenuList>
-                            </Menu>
-                          </Flex>
-                          <Heading size="sm" mb={1}>{alert.city}</Heading>
-                          <Text color="gray.600" fontSize="sm" mb={2}>
-                            {formatDate(alert.createdAt)}
-                          </Text>
-                          <Text>{alert.message}</Text>
-                        </Box>
-                      </Flex>
-                    </CardBody>
-                  </Card>
-                ))}
-              </VStack>
+              <Tabs 
+                colorScheme="blue" 
+                variant="enclosed" 
+                onChange={(index) => setActiveTab(index)}
+                bg={headerBg}
+                borderRadius="lg"
+                boxShadow="sm"
+                borderColor={borderColor}
+                borderWidth="1px"
+                mb={6}
+              >
+                <TabList px={4} pt={4}>
+                  <Tab _selected={{ bg: useColorModeValue('white', 'gray.700') }}>
+                    All 
+                    <Badge ml={2} colorScheme="blue" borderRadius="full">
+                      {alertsByStatus.all.length}
+                    </Badge>
+                  </Tab>
+                  <Tab _selected={{ bg: useColorModeValue('white', 'gray.700') }}>
+                    New 
+                    <Badge ml={2} colorScheme="red" borderRadius="full">
+                      {alertsByStatus.new.length}
+                    </Badge>
+                  </Tab>
+                  <Tab _selected={{ bg: useColorModeValue('white', 'gray.700') }}>
+                    Acknowledged 
+                    <Badge ml={2} colorScheme="purple" borderRadius="full">
+                      {alertsByStatus.acknowledged.length}
+                    </Badge>
+                  </Tab>
+                  <Tab _selected={{ bg: useColorModeValue('white', 'gray.700') }}>
+                    Resolved 
+                    <Badge ml={2} colorScheme="green" borderRadius="full">
+                      {alertsByStatus.resolved.length}
+                    </Badge>
+                  </Tab>
+                </TabList>
+                
+                <TabPanels>
+                  <TabPanel>
+                    {alertsByStatus.all.length > 0 ? (
+                      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+                        {alertsByStatus.all.map(alert => (
+                          <AlertCard 
+                            key={alert.id} 
+                            alert={alert}
+                            onAcknowledge={handleAcknowledge}
+                            onResolve={handleResolve} 
+                          />
+                        ))}
+                      </SimpleGrid>
+                    ) : (
+                      <Box textAlign="center" py={10}>
+                        <FiAlertCircle size={50} style={{ margin: '0 auto 20px' }} />
+                        <Heading size="md" mb={2}>No alerts found</Heading>
+                        <Text mb={4} color={subtitleColor}>
+                          No alerts match your current filter criteria.
+                        </Text>
+                        <Button onClick={resetFilters} colorScheme="blue" size="sm">
+                          Reset Filters
+                        </Button>
+                      </Box>
+                    )}
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    {alertsByStatus.new.length > 0 ? (
+                      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+                        {alertsByStatus.new.map(alert => (
+                          <AlertCard 
+                            key={alert.id} 
+                            alert={alert}
+                            onAcknowledge={handleAcknowledge}
+                            onResolve={handleResolve} 
+                          />
+                        ))}
+                      </SimpleGrid>
+                    ) : (
+                      <Box textAlign="center" py={10}>
+                        <FiCheckCircle size={50} style={{ margin: '0 auto 20px' }} />
+                        <Heading size="md" mb={2}>No new alerts</Heading>
+                        <Text color={subtitleColor}>
+                          There are no new alerts that need your attention.
+                        </Text>
+                      </Box>
+                    )}
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    {alertsByStatus.acknowledged.length > 0 ? (
+                      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+                        {alertsByStatus.acknowledged.map(alert => (
+                          <AlertCard 
+                            key={alert.id} 
+                            alert={alert}
+                            onAcknowledge={handleAcknowledge}
+                            onResolve={handleResolve} 
+                          />
+                        ))}
+                      </SimpleGrid>
+                    ) : (
+                      <Box textAlign="center" py={10}>
+                        <FiInfo size={50} style={{ margin: '0 auto 20px' }} />
+                        <Heading size="md" mb={2}>No acknowledged alerts</Heading>
+                        <Text color={subtitleColor}>
+                          There are no alerts currently in the acknowledged state.
+                        </Text>
+                      </Box>
+                    )}
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    {alertsByStatus.resolved.length > 0 ? (
+                      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+                        {alertsByStatus.resolved.map(alert => (
+                          <AlertCard 
+                            key={alert.id} 
+                            alert={alert}
+                            onAcknowledge={handleAcknowledge}
+                            onResolve={handleResolve} 
+                          />
+                        ))}
+                      </SimpleGrid>
+                    ) : (
+                      <Box textAlign="center" py={10}>
+                        <FiAlertCircle size={50} style={{ margin: '0 auto 20px' }} />
+                        <Heading size="md" mb={2}>No resolved alerts</Heading>
+                        <Text color={subtitleColor}>
+                          There are no resolved alerts in the system.
+                        </Text>
+                      </Box>
+                    )}
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
             )}
           </CardBody>
         </Card>
         
-        {/* Create Alert Modal */}
+        {/* New Alert Modal */}
         <Modal isOpen={isOpen} onClose={onClose} size="lg">
           <ModalOverlay />
           <ModalContent>
-            <form onSubmit={handleCreateAlert}>
-              <ModalHeader>Create New Alert</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody>
-                <VStack spacing={4}>
-                  <FormControl isRequired>
-                    <FormLabel>City</FormLabel>
-                    <Select name="city" placeholder="Select city" required>
-                      {cities.filter(city => city !== 'All Cities').map(city => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  
-                  <FormControl isRequired>
-                    <FormLabel>Alert Type</FormLabel>
-                    <Select name="type" placeholder="Select type" required>
-                      {Object.keys(alertTypes).map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  
-                  <FormControl isRequired>
-                    <FormLabel>Severity</FormLabel>
-                    <Select name="severity" placeholder="Select severity" required>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </Select>
-                  </FormControl>
-                  
-                  <FormControl isRequired>
-                    <FormLabel>Alert Message</FormLabel>
-                    <Textarea 
-                      name="message"
-                      placeholder="Describe the alert in detail..."
-                      rows={4}
-                      required
-                    />
-                  </FormControl>
-                  
-                  {/* Image Upload */}
-                  <FormControl>
-                    <FormLabel>Upload Image (Optional)</FormLabel>
-                    <Flex 
-                      direction="column" 
-                      borderWidth={2} 
-                      borderRadius="md" 
-                      borderStyle="dashed" 
-                      borderColor="gray.300"
-                      p={4}
-                      align="center"
-                      justify="center"
-                      cursor="pointer"
-                      onClick={() => document.getElementById('alert-image-upload')?.click()}
-                    >
-                      <Input
-                        id="alert-image-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        hidden
-                      />
-                      {imagePreview ? (
-                        <VStack spacing={2}>
-                          <Image 
-                            src={imagePreview} 
-                            alt="Preview" 
-                            maxHeight="150px" 
-                            borderRadius="md"
-                          />
-                          <Text fontSize="sm" color="gray.500">
-                            {selectedImage?.name}
-                          </Text>
-                          <Button 
-                            size="xs" 
-                            colorScheme="red" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedImage(null);
-                              setImagePreview(null);
-                            }}
-                          >
-                            Remove
-                          </Button>
-                        </VStack>
-                      ) : (
-                        <VStack spacing={2}>
-                          <FiUpload size={24} color="gray" />
-                          <Text fontSize="sm" color="gray.500">Click to upload an image</Text>
-                        </VStack>
-                      )}
-                    </Flex>
-                  </FormControl>
-                </VStack>
-              </ModalBody>
+            <ModalHeader>Create New Alert</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mb={4}>
+                <FormControl isRequired>
+                  <FormLabel>City</FormLabel>
+                  <Select
+                    name="city"
+                    value={newAlert.city}
+                    onChange={handleInputChange}
+                    isDisabled={!!user?.city}
+                  >
+                    <option value="Mumbai">Mumbai</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Bangalore">Bangalore</option>
+                    <option value="Chennai">Chennai</option>
+                    <option value="Hyderabad">Hyderabad</option>
+                  </Select>
+                </FormControl>
+                
+                <FormControl isRequired>
+                  <FormLabel>Type</FormLabel>
+                  <Select
+                    name="type"
+                    value={newAlert.type}
+                    onChange={handleInputChange}
+                  >
+                    <option value="Traffic Congestion">Traffic Congestion</option>
+                    <option value="Air Quality">Air Quality</option>
+                    <option value="Power Outage">Power Outage</option>
+                    <option value="Flooding">Flooding</option>
+                    <option value="Water Supply">Water Supply</option>
+                    <option value="Traffic Diversion">Traffic Diversion</option>
+                  </Select>
+                </FormControl>
+              </SimpleGrid>
               
-              <ModalFooter>
-                <Button variant="ghost" mr={3} onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  colorScheme="blue" 
-                  isLoading={isLoading}
-                  loadingText="Creating..."
+              <FormControl isRequired mb={4}>
+                <FormLabel>Severity</FormLabel>
+                <Select
+                  name="severity"
+                  value={newAlert.severity}
+                  onChange={handleInputChange}
                 >
-                  Create Alert
-                </Button>
-              </ModalFooter>
-            </form>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </Select>
+              </FormControl>
+              
+              <FormControl isRequired mb={4}>
+                <FormLabel>Location</FormLabel>
+                <Input
+                  name="location"
+                  value={newAlert.location}
+                  onChange={handleInputChange}
+                  placeholder="Specific location of the alert"
+                />
+              </FormControl>
+              
+              <FormControl isRequired mb={4}>
+                <FormLabel>Message</FormLabel>
+                <Textarea
+                  name="message"
+                  value={newAlert.message}
+                  onChange={handleInputChange}
+                  placeholder="Detailed description of the alert"
+                  rows={4}
+                />
+              </FormControl>
+            </ModalBody>
+            
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button colorScheme="blue" onClick={handleCreateAlert}>
+                Create Alert
+              </Button>
+            </ModalFooter>
           </ModalContent>
         </Modal>
       </Box>

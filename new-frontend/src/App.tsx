@@ -1,11 +1,16 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ChakraProvider, extendTheme, Box, ColorModeScript } from '@chakra-ui/react';
-import { mode } from '@chakra-ui/theme-tools';
+import React, { useMemo } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ChakraProvider, Box, ColorModeScript } from '@chakra-ui/react';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+
+// Import custom themes
+import AdminTheme from './theme/AdminTheme';
+import UserTheme from './theme/UserTheme';
 
 // Components
 import Navbar from './components/Navbar';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages
 import Home from './pages/Home';
@@ -18,71 +23,35 @@ import CityMap from './pages/CityMap';
 import Alerts from './pages/Alerts';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import AdminPanel from './pages/AdminPanel';
+import UserDashboard from './pages/UserDashboard';
+import NotFound from './pages/NotFound';
 
-// Theme configuration with color mode
-const config = {
-  initialColorMode: 'light',
-  useSystemColorMode: false,
+// Theme Provider wrapper that selects the right theme based on user role
+const ThemeSelector: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  
+  // Select theme based on user role
+  const theme = useMemo(() => {
+    return user?.role === 'admin' ? AdminTheme : UserTheme;
+  }, [user?.role]);
+  
+  return (
+    <ChakraProvider theme={theme}>
+      <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+      {children}
+    </ChakraProvider>
+  );
 };
-
-const theme = extendTheme({
-  config,
-  fonts: {
-    heading: `'Inter', sans-serif`,
-    body: `'Inter', sans-serif`,
-  },
-  styles: {
-    global: (props) => ({
-      body: {
-        bg: mode('gray.50', 'gray.900')(props),
-        color: mode('gray.800', 'whiteAlpha.900')(props),
-      },
-    }),
-  },
-  colors: {
-    brand: {
-      50: '#e3f2fd',
-      100: '#bbdefb',
-      200: '#90caf9',
-      300: '#64b5f6',
-      400: '#42a5f5',
-      500: '#2196f3',
-      600: '#1e88e5',
-      700: '#1976d2',
-      800: '#1565c0',
-      900: '#0d47a1',
-    },
-  },
-});
 
 // Layout component for authenticated pages
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <>
+    <Box minH="100vh">
       <Navbar />
-      {children}
-    </>
+      <Box pt="60px">{children}</Box>
+    </Box>
   );
-};
-
-// Protected Route Component
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
-  const location = useLocation();
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  return <AuthenticatedLayout>{children}</AuthenticatedLayout>;
 };
 
 // Dashboard Redirect based on user role
@@ -98,80 +67,89 @@ const DashboardRedirect = () => {
 
 function App() {
   return (
-    <>
-      <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-      <ChakraProvider theme={theme}>
-        <AuthProvider>
-          <Router>
+    <AuthProvider>
+      <ThemeProvider>
+        <Router>
+          <ThemeSelector>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
-              {/* Dashboard Redirect */}
+              {/* Protected routes with navbar */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route 
                 path="/dashboard" 
                 element={
                   <ProtectedRoute>
-                    <DashboardRedirect />
+                    <AuthenticatedLayout>
+                      <Dashboard />
+                    </AuthenticatedLayout>
                   </ProtectedRoute>
                 } 
               />
-              
-              {/* User Dashboard */}
-              <Route 
-                path="/user-dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Admin Dashboard */}
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              
-              {/* Feature Pages */}
               <Route 
                 path="/analytics" 
                 element={
                   <ProtectedRoute>
-                    <Analytics />
+                    <AuthenticatedLayout>
+                      <Analytics />
+                    </AuthenticatedLayout>
                   </ProtectedRoute>
-                }
+                } 
               />
-              
               <Route 
                 path="/city-map" 
                 element={
                   <ProtectedRoute>
-                    <CityMap />
+                    <AuthenticatedLayout>
+                      <CityMap />
+                    </AuthenticatedLayout>
                   </ProtectedRoute>
-                }
+                } 
               />
-              
               <Route 
                 path="/alerts" 
                 element={
                   <ProtectedRoute>
-                    <Alerts />
+                    <AuthenticatedLayout>
+                      <Alerts />
+                    </AuthenticatedLayout>
                   </ProtectedRoute>
-                }
+                } 
               />
               
+              {/* Role-specific routes */}
+              <Route 
+                path="/admin/*" 
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AuthenticatedLayout>
+                      <AdminPanel />
+                    </AuthenticatedLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/user-dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <AuthenticatedLayout>
+                      <UserDashboard />
+                    </AuthenticatedLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Feature Pages */}
               <Route 
                 path="/reports" 
                 element={
                   <ProtectedRoute>
-                    <Reports />
+                    <AuthenticatedLayout>
+                      <Reports />
+                    </AuthenticatedLayout>
                   </ProtectedRoute>
                 }
               />
@@ -180,18 +158,20 @@ function App() {
                 path="/settings" 
                 element={
                   <ProtectedRoute>
-                    <Settings />
+                    <AuthenticatedLayout>
+                      <Settings />
+                    </AuthenticatedLayout>
                   </ProtectedRoute>
                 }
               />
               
-              {/* Catch-all route - redirect to home */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Not found */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
-          </Router>
-        </AuthProvider>
-      </ChakraProvider>
-    </>
+          </ThemeSelector>
+        </Router>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

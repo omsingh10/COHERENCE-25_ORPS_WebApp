@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Flex,
@@ -16,10 +16,21 @@ import {
   ButtonGroup,
   IconButton,
   Divider,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanel,
+  TabPanels,
+  useToast,
+  FormControl,
+  Switch,
+  FormLabel,
 } from '@chakra-ui/react';
 import { FiHome, FiPieChart, FiMap, FiAlertCircle, FiSettings, FiZoomIn, FiZoomOut, FiPlus, FiMinus } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import LiveMap from '../components/LiveMap';
+import { getAllCities } from '../utils/realTimeData';
 
 // Sidebar menu item
 const SidebarItem = ({ icon, to, children, isActive = false }: { icon: React.ReactElement, to: string, children: React.ReactNode, isActive?: boolean }) => {
@@ -97,179 +108,233 @@ const InfoBox = ({ title, description }: { title: string, description: string })
 const CityMap = () => {
   const { user } = useAuth();
   const [selectedCity, setSelectedCity] = useState(user?.city || 'Mumbai');
-  const [activeTab, setActiveTab] = useState('traffic');
+  const [activeTab, setActiveTab] = useState(0);
+  const [showTraffic, setShowTraffic] = useState(true);
+  const [showInfrastructure, setShowInfrastructure] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
   
-  // Mock map configurations
-  const mapUrls = {
-    'Mumbai': 'https://www.openstreetmap.org/export/embed.html?bbox=72.7,18.8,73.1,19.2&layer=mapnik',
-    'Delhi': 'https://www.openstreetmap.org/export/embed.html?bbox=76.8,28.4,77.4,28.8&layer=mapnik',
-    'Bangalore': 'https://www.openstreetmap.org/export/embed.html?bbox=77.4,12.8,77.8,13.1&layer=mapnik',
-    'Chennai': 'https://www.openstreetmap.org/export/embed.html?bbox=80.1,12.9,80.3,13.2&layer=mapnik',
-    'Hyderabad': 'https://www.openstreetmap.org/export/embed.html?bbox=78.3,17.3,78.6,17.5&layer=mapnik'
-  };
-
-  const mapUrl = mapUrls[selectedCity as keyof typeof mapUrls];
+  // Get all available cities
+  const cities = getAllCities();
   
-  // Convert active tab to readable title
-  const getTabTitle = (tab: string) => {
-    switch(tab) {
-      case 'traffic': return 'Traffic Status';
-      case 'environment': return 'Environmental Monitoring';
-      case 'infrastructure': return 'Infrastructure Overview';
-      default: return 'Map View';
-    }
+  // Color mode values
+  const bg = useColorModeValue('gray.50', 'gray.900');
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'gray.100');
+  const subtitleColor = useColorModeValue('gray.600', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const tabBg = useColorModeValue('white', 'gray.700');
+  
+  // Handle city change
+  const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCity = e.target.value;
+    setSelectedCity(newCity);
+    setLoading(true);
+    
+    // Simulate loading delay
+    setTimeout(() => setLoading(false), 500);
+    
+    toast({
+      title: 'City updated',
+      description: `Displaying map for ${newCity}`,
+      status: 'info',
+      duration: 2000,
+      isClosable: true,
+    });
   };
-
-  // Tab description mapping
-  const tabDescriptions = {
-    'traffic': 'Current traffic conditions across the city, updated in real-time.',
-    'environment': 'Air quality, water levels, and other environmental indicators.',
-    'infrastructure': 'Status of power grid, water systems, and public transport.'
-  };
-
+  
   return (
-    <Flex>
-      {/* Sidebar - hidden on mobile */}
-      <Box display={{ base: 'none', md: 'block' }}>
-        <Sidebar />
-      </Box>
-      
-      {/* Main content area with left padding for sidebar */}
-      <Box
-        ml={{ base: 0, md: 60 }}
-        p="4"
-        width="full"
-        bg={useColorModeValue('gray.50', 'gray.900')}
-        minH="100vh"
-      >
+    <Box minH="100vh" bg={bg} pt="80px">
+      <Box maxW="1400px" mx="auto" px={4}>
         <Flex justify="space-between" align="center" mb={6}>
           <Box>
-            <Heading as="h1" size="lg">City Map</Heading>
-            <Text color="gray.600">Interactive map of city infrastructure and monitoring</Text>
+            <Heading as="h1" size="lg" color={textColor}>City Map</Heading>
+            <Text color={subtitleColor}>
+              Interactive map of city infrastructure and monitoring
+            </Text>
           </Box>
           
-          <Select 
-            value={selectedCity} 
-            onChange={(e) => setSelectedCity(e.target.value)} 
-            maxW="200px"
-            isDisabled={!!user?.city}
-            bg="white"
-            borderRadius="lg"
-          >
-            <option value="Mumbai">Mumbai</option>
-            <option value="Delhi">Delhi</option>
-            <option value="Bangalore">Bangalore</option>
-            <option value="Chennai">Chennai</option>
-            <option value="Hyderabad">Hyderabad</option>
-          </Select>
+          {(!user?.city || user?.role === 'admin') && (
+            <FormControl w="200px">
+              <Select 
+                value={selectedCity} 
+                onChange={handleCityChange}
+                bg={cardBg}
+                borderRadius="lg"
+                borderColor={borderColor}
+              >
+                {cities.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </Select>
+            </FormControl>
+          )}
         </Flex>
         
-        {/* Map buttons */}
-        <ButtonGroup mb={4} variant="solid" isAttached>
-          <Button 
-            colorScheme={activeTab === 'traffic' ? 'blue' : 'gray'} 
-            onClick={() => setActiveTab('traffic')}
-          >
-            Traffic
-          </Button>
-          <Button 
-            colorScheme={activeTab === 'environment' ? 'blue' : 'gray'} 
-            onClick={() => setActiveTab('environment')}
-          >
-            Environment
-          </Button>
-          <Button 
-            colorScheme={activeTab === 'infrastructure' ? 'blue' : 'gray'} 
-            onClick={() => setActiveTab('infrastructure')}
-          >
-            Infrastructure
-          </Button>
-        </ButtonGroup>
-        
-        {/* Map container */}
-        <Card borderRadius="lg" overflow="hidden" position="relative" height="550px" mb={6}>
-          <Box
-            as="iframe"
-            src={mapUrl}
-            width="100%"
-            height="100%"
-            borderWidth="0"
-          />
+        <Tabs 
+          colorScheme="blue" 
+          variant="soft-rounded" 
+          onChange={(index) => setActiveTab(index)}
+          mb={6}
+        >
+          <TabList overflowX="auto" py={2}>
+            <Tab _selected={{ bg: 'blue.500', color: 'white' }}>Traffic</Tab>
+            <Tab _selected={{ bg: 'blue.500', color: 'white' }}>Environment</Tab>
+            <Tab _selected={{ bg: 'blue.500', color: 'white' }}>Infrastructure</Tab>
+          </TabList>
           
-          {/* Map controls */}
-          <Box position="absolute" top={4} right={4}>
-            <VStack spacing={2}>
-              <IconButton
-                aria-label="Zoom in"
-                icon={<FiPlus />}
-                colorScheme="blue"
-                size="sm"
-                borderRadius="full"
-              />
-              <IconButton
-                aria-label="Zoom out"
-                icon={<FiMinus />}
-                colorScheme="blue"
-                size="sm"
-                borderRadius="full"
-              />
-            </VStack>
-          </Box>
-          
-          {/* Attribution */}
-          <Box position="absolute" bottom={2} right={2} fontSize="xs" bg="white" px={2} py={1} borderRadius="md" opacity={0.8}>
-            <Text>© OpenStreetMap contributors</Text>
-          </Box>
-        </Card>
-        
-        {/* Info sections below map */}
-        <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6}>
-          <InfoBox 
-            title={activeTab === 'traffic' ? "Traffic Status" : (activeTab === 'environment' ? "Environmental Monitoring" : "Infrastructure Overview")}
-            description={tabDescriptions[activeTab as keyof typeof tabDescriptions]}
-          />
-          
-          {activeTab === 'traffic' && (
-            <>
-              <InfoBox 
-                title="Traffic Congestion Points"
-                description="Main Street & 5th Avenue - Heavy traffic due to accident. Western Express Highway - Moderate congestion."
-              />
-              <InfoBox 
-                title="Recommended Routes"
-                description="Avoid North-South Highway between 4-7pm. Eastern Express route currently clear."
-              />
-            </>
-          )}
-          
-          {activeTab === 'environment' && (
-            <>
-              <InfoBox 
-                title="Air Quality Monitoring"
-                description="AQI in Downtown area: 68 (Moderate). PM2.5 levels currently within acceptable range."
-              />
-              <InfoBox 
-                title="Water Levels"
-                description="Reservoir levels at 68%. Lake City water treatment plant operating at normal capacity."
-              />
-            </>
-          )}
-          
-          {activeTab === 'infrastructure' && (
-            <>
-              <InfoBox 
-                title="Power Grid Status"
-                description="All substations operational. Scheduled maintenance in South District on Saturday."
-              />
-              <InfoBox 
-                title="Public Transport"
-                description="Subway lines operating normally. Bus route 42 diverted due to road repairs."
-              />
-            </>
-          )}
-        </SimpleGrid>
+          <TabPanels>
+            {/* Traffic Tab */}
+            <TabPanel p={0} pt={4}>
+              <Box 
+                borderRadius="lg" 
+                overflow="hidden" 
+                boxShadow="md"
+                bg={cardBg}
+                height="calc(100vh - 220px)"
+                position="relative"
+              >
+                <LiveMap city={selectedCity} height="100%" />
+                
+                {/* Map Controls Panel */}
+                <Box 
+                  position="absolute" 
+                  top={4} 
+                  right={4} 
+                  bg={cardBg} 
+                  p={3} 
+                  borderRadius="md" 
+                  boxShadow="md"
+                  borderColor={borderColor}
+                  borderWidth="1px"
+                >
+                  <Heading size="sm" mb={2}>Map Controls</Heading>
+                  <FormControl display="flex" alignItems="center" mb={2}>
+                    <Switch 
+                      isChecked={showTraffic} 
+                      onChange={() => setShowTraffic(!showTraffic)} 
+                      colorScheme="red" 
+                      id="traffic-toggle"
+                    />
+                    <FormLabel htmlFor="traffic-toggle" mb={0} ml={2} fontSize="sm">
+                      Show Traffic
+                    </FormLabel>
+                  </FormControl>
+                  
+                  <FormControl display="flex" alignItems="center">
+                    <Switch 
+                      isChecked={showInfrastructure} 
+                      onChange={() => setShowInfrastructure(!showInfrastructure)} 
+                      colorScheme="blue" 
+                      id="infrastructure-toggle"
+                    />
+                    <FormLabel htmlFor="infrastructure-toggle" mb={0} ml={2} fontSize="sm">
+                      Show Infrastructure
+                    </FormLabel>
+                  </FormControl>
+                </Box>
+              </Box>
+            </TabPanel>
+            
+            {/* Environment Tab */}
+            <TabPanel p={0} pt={4}>
+              <Box 
+                borderRadius="lg" 
+                overflow="hidden" 
+                boxShadow="md"
+                bg={cardBg}
+                height="calc(100vh - 220px)"
+              >
+                <LiveMap city={selectedCity} height="100%" />
+                
+                {/* Environment layer controls would go here */}
+                <Box 
+                  position="absolute" 
+                  top={4} 
+                  right={4} 
+                  bg={cardBg} 
+                  p={3} 
+                  borderRadius="md" 
+                  boxShadow="md"
+                  borderColor={borderColor}
+                  borderWidth="1px"
+                >
+                  <Heading size="sm" mb={2}>Environment Layers</Heading>
+                  <FormControl display="flex" alignItems="center" mb={2}>
+                    <Switch colorScheme="green" id="air-quality-toggle" />
+                    <FormLabel htmlFor="air-quality-toggle" mb={0} ml={2} fontSize="sm">
+                      Air Quality
+                    </FormLabel>
+                  </FormControl>
+                  
+                  <FormControl display="flex" alignItems="center" mb={2}>
+                    <Switch colorScheme="blue" id="water-quality-toggle" />
+                    <FormLabel htmlFor="water-quality-toggle" mb={0} ml={2} fontSize="sm">
+                      Water Bodies
+                    </FormLabel>
+                  </FormControl>
+                  
+                  <FormControl display="flex" alignItems="center">
+                    <Switch colorScheme="purple" id="noise-toggle" />
+                    <FormLabel htmlFor="noise-toggle" mb={0} ml={2} fontSize="sm">
+                      Noise Levels
+                    </FormLabel>
+                  </FormControl>
+                </Box>
+              </Box>
+            </TabPanel>
+            
+            {/* Infrastructure Tab */}
+            <TabPanel p={0} pt={4}>
+              <Box 
+                borderRadius="lg" 
+                overflow="hidden" 
+                boxShadow="md"
+                bg={cardBg}
+                height="calc(100vh - 220px)"
+              >
+                <LiveMap city={selectedCity} height="100%" />
+                
+                {/* Infrastructure layer controls would go here */}
+                <Box 
+                  position="absolute" 
+                  top={4} 
+                  right={4} 
+                  bg={cardBg} 
+                  p={3} 
+                  borderRadius="md" 
+                  boxShadow="md"
+                  borderColor={borderColor}
+                  borderWidth="1px"
+                >
+                  <Heading size="sm" mb={2}>Infrastructure Layers</Heading>
+                  <FormControl display="flex" alignItems="center" mb={2}>
+                    <Switch colorScheme="blue" id="public-transport-toggle" />
+                    <FormLabel htmlFor="public-transport-toggle" mb={0} ml={2} fontSize="sm">
+                      Public Transport
+                    </FormLabel>
+                  </FormControl>
+                  
+                  <FormControl display="flex" alignItems="center" mb={2}>
+                    <Switch colorScheme="yellow" id="energy-grid-toggle" />
+                    <FormLabel htmlFor="energy-grid-toggle" mb={0} ml={2} fontSize="sm">
+                      Energy Grid
+                    </FormLabel>
+                  </FormControl>
+                  
+                  <FormControl display="flex" alignItems="center">
+                    <Switch colorScheme="cyan" id="water-supply-toggle" />
+                    <FormLabel htmlFor="water-supply-toggle" mb={0} ml={2} fontSize="sm">
+                      Water Supply
+                    </FormLabel>
+                  </FormControl>
+                </Box>
+              </Box>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
       </Box>
-    </Flex>
+    </Box>
   );
 };
 

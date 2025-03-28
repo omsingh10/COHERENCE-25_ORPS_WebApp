@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Flex,
@@ -21,36 +21,25 @@ import {
   FormControl,
   FormLabel,
   Button,
+  useToast,
 } from '@chakra-ui/react';
-import { Line, Bar, Pie } from 'react-chartjs-2';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { FiHome, FiPieChart, FiMap, FiAlertCircle, FiSettings, FiBarChart2 } from 'react-icons/fi';
+  FiHome,
+  FiPieChart,
+  FiMap,
+  FiAlertCircle,
+  FiSettings,
+  FiBarChart2,
+  FiFileText,
+} from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// Import our new live components
+import LiveChart from '../components/LiveChart';
+import LiveMap from '../components/LiveMap';
+import { getAllCities, getCityDataStream, getInitialCityData } from '../utils/realTimeData';
+import { Subscription } from 'rxjs';
 
 // Sidebar menu item
 const SidebarItem = ({ icon, to, children, isActive = false }: { icon: React.ReactElement, to: string, children: React.ReactNode, isActive?: boolean }) => {
@@ -84,6 +73,8 @@ const SidebarItem = ({ icon, to, children, isActive = false }: { icon: React.Rea
 
 // Sidebar component
 const Sidebar = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   
@@ -103,11 +94,28 @@ const Sidebar = () => {
         </Text>
       </Flex>
       <VStack spacing={1} align="stretch" mt={5}>
-        <SidebarItem icon={<FiHome size={18} />} to="/user-dashboard">Dashboard</SidebarItem>
-        <SidebarItem icon={<FiPieChart size={18} />} to="/analytics" isActive>Analytics</SidebarItem>
-        <SidebarItem icon={<FiMap size={18} />} to="/city-map">City Map</SidebarItem>
-        <SidebarItem icon={<FiAlertCircle size={18} />} to="/alerts">Alerts</SidebarItem>
-        <SidebarItem icon={<FiSettings size={18} />} to="/settings">Settings</SidebarItem>
+        {isAdmin ? (
+          // Admin sidebar items
+          <>
+            <SidebarItem icon={<FiPieChart size={18} />} to="/admin">Admin Dashboard</SidebarItem>
+            <SidebarItem icon={<FiHome size={18} />} to="/users">User Management</SidebarItem>
+            <SidebarItem icon={<FiAlertCircle size={18} />} to="/alerts">Alert Management</SidebarItem>
+            <SidebarItem icon={<FiMap size={18} />} to="/city-map">City Map</SidebarItem>
+            <SidebarItem icon={<FiPieChart size={18} />} to="/analytics" isActive>System Analytics</SidebarItem>
+            <SidebarItem icon={<FiFileText size={18} />} to="/reports">Reports</SidebarItem>
+            <SidebarItem icon={<FiSettings size={18} />} to="/settings">Settings</SidebarItem>
+          </>
+        ) : (
+          // User sidebar items
+          <>
+            <SidebarItem icon={<FiHome size={18} />} to="/user-dashboard">Dashboard</SidebarItem>
+            <SidebarItem icon={<FiPieChart size={18} />} to="/analytics" isActive>Analytics</SidebarItem>
+            <SidebarItem icon={<FiMap size={18} />} to="/city-map">City Map</SidebarItem>
+            <SidebarItem icon={<FiAlertCircle size={18} />} to="/alerts">Alerts</SidebarItem>
+            <SidebarItem icon={<FiFileText size={18} />} to="/reports">Reports</SidebarItem>
+            <SidebarItem icon={<FiSettings size={18} />} to="/settings">Settings</SidebarItem>
+          </>
+        )}
       </VStack>
     </Box>
   );
@@ -116,98 +124,103 @@ const Sidebar = () => {
 const Analytics = () => {
   const { user } = useAuth();
   const [selectedCity, setSelectedCity] = useState(user?.city || 'Mumbai');
-  const [selectedTimeRange, setSelectedTimeRange] = useState('30');
-  const [selectedMetric, setSelectedMetric] = useState('all');
+  const [activeTab, setActiveTab] = useState(0);
+  const [airQualityData, setAirQualityData] = useState({
+    aqi: 0,
+    pm25: 0,
+    pm10: 0,
+    no2: 0,
+    o3: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const toast = useToast();
   
-  // Mock data for charts
-  const airQualityData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
-    datasets: [
-      {
-        label: 'AQI',
-        data: [25, 39, 60, 75, 40, 50, 80],
-        borderColor: '#ED8936',
-        backgroundColor: '#ED893633',
-        fill: true,
-        tension: 0.4,
+  // Get all available cities
+  const cities = getAllCities();
+  
+  // Default chart height
+  const chartHeight = '300px';
+  
+  // Subscribe to city data changes for air quality indicators
+  useEffect(() => {
+    setLoading(true);
+    
+    // Get initial data
+    const initialData = getInitialCityData(selectedCity);
+    if (initialData && initialData.airQuality) {
+      const latestAqi = initialData.airQuality[initialData.airQuality.length - 1];
+      updateAirQualityData(latestAqi);
+    }
+    
+    // Subscribe to real-time updates
+    const subscription = getCityDataStream(selectedCity).subscribe({
+      next: (data) => {
+        if (data && data.airQuality) {
+          const latestAqi = data.airQuality[data.airQuality.length - 1];
+          updateAirQualityData(latestAqi);
+        }
+        setLoading(false);
       },
-      {
-        label: 'PM2.5',
-        data: [15, 29, 40, 55, 30, 40, 60],
-        borderColor: '#9F7AEA',
-        backgroundColor: '#9F7AEA33',
-        fill: true,
-        tension: 0.4,
-      },
-    ],
+      error: (err) => {
+        console.error('Error fetching city data:', err);
+        toast({
+          title: 'Error loading data',
+          description: 'Unable to load real-time data. Please try again later.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        setLoading(false);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [selectedCity, toast]);
+  
+  // Helper to update air quality data with derived values
+  const updateAirQualityData = (aqi: number) => {
+    // Generate related air quality metrics based on AQI
+    // These are simulated values that would normally come from sensors
+    setAirQualityData({
+      aqi: Math.round(aqi),
+      pm25: Math.round(aqi * 0.58),
+      pm10: Math.round(aqi * 0.95),
+      no2: Math.round(aqi * 0.25),
+      o3: Math.round(aqi * 0.45)
+    });
   };
   
-  const trafficData = {
-    labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-    datasets: [
-      {
-        label: 'Average Speed (km/h)',
-        data: [45, 25, 30, 35, 28, 32, 50],
-        borderColor: '#38A169',
-        backgroundColor: '#38A16933',
-        fill: true,
-        tension: 0.4,
-      },
-      {
-        label: 'Congestion Rate (%)',
-        data: [10, 45, 40, 35, 42, 38, 15],
-        borderColor: '#E53E3E',
-        backgroundColor: '#E53E3E33',
-        fill: true,
-        tension: 0.4,
-      },
-    ],
-  };
-
-  const energyConsumptionData = {
-    labels: ['Residential', 'Commercial', 'Industrial', 'Public Services', 'Transportation'],
-    datasets: [
-      {
-        label: 'Energy Consumption by Sector',
-        data: [35, 25, 22, 10, 8],
-        backgroundColor: [
-          '#4FD1C5',
-          '#F6AD55',
-          '#FC8181', 
-          '#63B3ED',
-          '#B794F4',
-        ],
-      },
-    ],
+  // Get color scheme based on value
+  const getColorScheme = (value: number, type: string) => {
+    if (type === 'aqi') {
+      if (value < 50) return 'green';
+      if (value < 100) return 'yellow';
+      if (value < 150) return 'orange';
+      if (value < 200) return 'red';
+      return 'purple';
+    } 
+    else if (type === 'pm') {
+      if (value < 30) return 'green';
+      if (value < 60) return 'yellow';
+      return 'orange';
+    }
+    else if (type === 'gas') {
+      if (value < 20) return 'green';
+      if (value < 40) return 'yellow';
+      return 'orange';
+    }
+    return 'gray';
   };
   
-  const waterUsageData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [
-      {
-        label: 'Consumption (Million Liters)',
-        data: [120, 115, 118, 125, 130, 140, 110],
-        backgroundColor: '#3182CE',
-      },
-    ],
+  // Handle city change
+  const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCity = e.target.value;
+    setSelectedCity(newCity);
+    setLoading(true);
   };
-
-  const comparisonData = {
-    labels: ['Air Quality', 'Traffic', 'Water', 'Energy', 'Waste'],
-    datasets: [
-      {
-        label: selectedCity,
-        data: [65, 59, 90, 81, 56],
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-      },
-      {
-        label: 'National Average',
-        data: [70, 65, 75, 70, 60],
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-      },
-    ],
-  };
-
+  
   return (
     <Flex>
       {/* Sidebar - hidden on mobile */}
@@ -226,230 +239,132 @@ const Analytics = () => {
         <Flex justify="space-between" align="center" mb={6}>
           <Box>
             <Heading as="h1" size="lg">Analytics Dashboard</Heading>
-            <Text color="gray.600">Comprehensive data analysis for {selectedCity}</Text>
+            <Text color={useColorModeValue('gray.600', 'gray.300')}>
+              Comprehensive data analysis for {selectedCity}
+            </Text>
           </Box>
           
-          <HStack spacing={4}>
-            <FormControl w="150px">
-              <Select 
-                value={selectedTimeRange} 
-                onChange={(e) => setSelectedTimeRange(e.target.value)}
-                bg="white"
-                borderRadius="lg"
-                size="sm"
-              >
-                <option value="7">Last 7 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="365">Last year</option>
-              </Select>
-            </FormControl>
-            
-            <FormControl w="150px">
+          {(!user?.city || user?.role === 'admin') && (
+            <FormControl w="200px">
               <Select 
                 value={selectedCity} 
-                onChange={(e) => setSelectedCity(e.target.value)}
-                isDisabled={!!user?.city}
-                bg="white"
+                onChange={handleCityChange}
+                bg={useColorModeValue('white', 'gray.700')}
                 borderRadius="lg"
-                size="sm"
               >
-                <option value="Mumbai">Mumbai</option>
-                <option value="Delhi">Delhi</option>
-                <option value="Bangalore">Bangalore</option>
-                <option value="Chennai">Chennai</option>
-                <option value="Hyderabad">Hyderabad</option>
+                {cities.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
               </Select>
             </FormControl>
-
-            <Button colorScheme="blue" size="sm">
-              Export Report
-            </Button>
-          </HStack>
+          )}
         </Flex>
         
-        {/* Analytics Content */}
-        <Tabs colorScheme="blue" variant="enclosed" bg="white" borderRadius="lg" boxShadow="sm">
-          <TabList>
-            <Tab _selected={{ bg: 'white', borderBottomColor: 'white' }}>Overview</Tab>
-            <Tab _selected={{ bg: 'white', borderBottomColor: 'white' }}>Air Quality</Tab>
-            <Tab _selected={{ bg: 'white', borderBottomColor: 'white' }}>Traffic</Tab>
-            <Tab _selected={{ bg: 'white', borderBottomColor: 'white' }}>Water</Tab>
-            <Tab _selected={{ bg: 'white', borderBottomColor: 'white' }}>Energy</Tab>
-            <Tab _selected={{ bg: 'white', borderBottomColor: 'white' }}>Comparisons</Tab>
+        {/* Main Content Tabs */}
+        <Tabs 
+          colorScheme="blue" 
+          variant="enclosed" 
+          onChange={(index) => setActiveTab(index)}
+          bg={useColorModeValue('white', 'gray.800')}
+          borderRadius="lg"
+          boxShadow="sm"
+          mb={6}
+        >
+          <TabList px={4} pt={4}>
+            <Tab _selected={{ bg: useColorModeValue('white', 'gray.700') }}>Overview</Tab>
+            <Tab _selected={{ bg: useColorModeValue('white', 'gray.700') }}>Environment</Tab>
+            <Tab _selected={{ bg: useColorModeValue('white', 'gray.700') }}>Traffic</Tab>
+            <Tab _selected={{ bg: useColorModeValue('white', 'gray.700') }}>Resources</Tab>
           </TabList>
           
           <TabPanels>
             {/* Overview Tab */}
             <TabPanel>
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                <Card borderRadius="lg">
-                  <CardHeader>
-                    <Heading size="md">Air Quality Trends</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Box height="300px">
-                      <Line 
-                        data={airQualityData} 
-                        options={{ 
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: {
-                              position: 'top' as const,
-                            },
-                            title: {
-                              display: true,
-                              text: `Air Quality Index Over Time (${selectedCity})`,
-                            },
-                          },
-                        }} 
-                      />
-                    </Box>
-                  </CardBody>
-                </Card>
-                
-                <Card borderRadius="lg">
-                  <CardHeader>
-                    <Heading size="md">Traffic Conditions</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Box height="300px">
-                      <Line 
-                        data={trafficData} 
-                        options={{ 
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: {
-                              position: 'top' as const,
-                            },
-                            title: {
-                              display: true,
-                              text: `Weekly Traffic Patterns (${selectedCity})`,
-                            },
-                          },
-                        }} 
-                      />
-                    </Box>
-                  </CardBody>
-                </Card>
-                
-                <Card borderRadius="lg">
-                  <CardHeader>
-                    <Heading size="md">Energy Consumption by Sector</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Box height="300px">
-                      <Pie 
-                        data={energyConsumptionData} 
-                        options={{ 
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: {
-                              position: 'right' as const,
-                            },
-                            title: {
-                              display: true,
-                              text: `Energy Distribution (${selectedCity})`,
-                            },
-                          },
-                        }} 
-                      />
-                    </Box>
-                  </CardBody>
-                </Card>
-                
-                <Card borderRadius="lg">
-                  <CardHeader>
-                    <Heading size="md">Water Usage</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Box height="300px">
-                      <Bar 
-                        data={waterUsageData} 
-                        options={{ 
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: {
-                              position: 'top' as const,
-                            },
-                            title: {
-                              display: true,
-                              text: `Daily Water Consumption (${selectedCity})`,
-                            },
-                          },
-                        }} 
-                      />
-                    </Box>
-                  </CardBody>
-                </Card>
+              {/* Live Traffic Map */}
+              <Box mb={6}>
+                <LiveMap city={selectedCity} height="400px" />
+              </Box>
+              
+              {/* Key Metrics */}
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={6}>
+                <LiveChart 
+                  city={selectedCity} 
+                  dataType="airQuality" 
+                  title="Air Quality Index" 
+                  color="#ED8936" 
+                  height={chartHeight} 
+                />
+                <LiveChart 
+                  city={selectedCity} 
+                  dataType="trafficDensity" 
+                  title="Traffic Density" 
+                  color="#E53E3E" 
+                  height={chartHeight} 
+                />
+                <LiveChart 
+                  city={selectedCity} 
+                  dataType="waterLevel" 
+                  title="Water Reservoir Levels" 
+                  color="#3182CE" 
+                  height={chartHeight} 
+                />
+                <LiveChart 
+                  city={selectedCity} 
+                  dataType="energyUsage" 
+                  title="Energy Consumption" 
+                  color="#38A169" 
+                  height={chartHeight} 
+                />
               </SimpleGrid>
             </TabPanel>
             
-            {/* Air Quality Tab */}
+            {/* Environment Tab */}
             <TabPanel>
-              <Card borderRadius="lg" mb={6}>
-                <CardHeader>
-                  <Heading size="md">Air Quality Analysis</Heading>
-                </CardHeader>
-                <CardBody>
-                  <Box height="400px">
-                    <Line 
-                      data={airQualityData} 
-                      options={{ 
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: {
-                            position: 'top' as const,
-                          },
-                          title: {
-                            display: true,
-                            text: `Detailed Air Quality Metrics (${selectedCity})`,
-                          },
-                        },
-                      }} 
-                    />
-                  </Box>
-                </CardBody>
-              </Card>
-              
-              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-                <Card>
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
+                <LiveChart 
+                  city={selectedCity} 
+                  dataType="airQuality" 
+                  title="Air Quality Index" 
+                  color="#ED8936" 
+                  height={chartHeight} 
+                />
+                <Card bg={useColorModeValue('white', 'gray.700')} boxShadow="sm" borderRadius="lg">
                   <CardHeader>
-                    <Heading size="sm">AQI Assessment</Heading>
+                    <Heading size="md">Air Quality Indicators</Heading>
                   </CardHeader>
                   <CardBody>
-                    <VStack align="stretch">
-                      <Text>Current AQI: <Badge colorScheme="yellow">72</Badge></Text>
-                      <Text>30-day Average: <Badge colorScheme="yellow">68</Badge></Text>
-                      <Text>Year-to-date Average: <Badge colorScheme="green">65</Badge></Text>
-                      <Text>Trend: 5.3% increase from previous period</Text>
+                    <VStack align="start" spacing={4}>
+                      <HStack justify="space-between" w="full">
+                        <Text fontWeight="medium">Current AQI:</Text>
+                        <Badge colorScheme={getColorScheme(airQualityData.aqi, 'aqi')} fontSize="md" px={2} py={1} borderRadius="md">
+                          {airQualityData.aqi}
+                        </Badge>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text fontWeight="medium">PM2.5:</Text>
+                        <Badge colorScheme={getColorScheme(airQualityData.pm25, 'pm')} fontSize="md" px={2} py={1} borderRadius="md">
+                          {airQualityData.pm25} µg/m³
+                        </Badge>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text fontWeight="medium">PM10:</Text>
+                        <Badge colorScheme={getColorScheme(airQualityData.pm10, 'pm')} fontSize="md" px={2} py={1} borderRadius="md">
+                          {airQualityData.pm10} µg/m³
+                        </Badge>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text fontWeight="medium">NO2:</Text>
+                        <Badge colorScheme={getColorScheme(airQualityData.no2, 'gas')} fontSize="md" px={2} py={1} borderRadius="md">
+                          {airQualityData.no2} ppb
+                        </Badge>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text fontWeight="medium">O3:</Text>
+                        <Badge colorScheme={getColorScheme(airQualityData.o3, 'gas')} fontSize="md" px={2} py={1} borderRadius="md">
+                          {airQualityData.o3} ppb
+                        </Badge>
+                      </HStack>
                     </VStack>
-                  </CardBody>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <Heading size="sm">Pollutant Breakdown</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <VStack align="stretch">
-                      <Text>PM2.5: <Badge colorScheme="orange">35 µg/m³</Badge></Text>
-                      <Text>PM10: <Badge colorScheme="yellow">52 µg/m³</Badge></Text>
-                      <Text>NO₂: <Badge colorScheme="green">18 ppb</Badge></Text>
-                      <Text>SO₂: <Badge colorScheme="green">5 ppb</Badge></Text>
-                    </VStack>
-                  </CardBody>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <Heading size="sm">Health Advisory</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Text>Current air quality is <strong>Moderate</strong>.</Text>
-                    <Text mt={2}>
-                      Unusually sensitive individuals should consider limiting prolonged outdoor exertion.
-                    </Text>
                   </CardBody>
                 </Card>
               </SimpleGrid>
@@ -457,68 +372,36 @@ const Analytics = () => {
             
             {/* Traffic Tab */}
             <TabPanel>
-              <Card borderRadius="lg" mb={6}>
-                <CardHeader>
-                  <Heading size="md">Traffic Analysis</Heading>
-                </CardHeader>
-                <CardBody>
-                  <Box height="400px">
-                    <Line 
-                      data={trafficData} 
-                      options={{ 
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: {
-                            position: 'top' as const,
-                          },
-                          title: {
-                            display: true,
-                            text: `Traffic Metrics (${selectedCity})`,
-                          },
-                        },
-                      }} 
-                    />
-                  </Box>
-                </CardBody>
-              </Card>
+              <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6} mb={6}>
+                <LiveMap city={selectedCity} height="400px" />
+                <LiveChart 
+                  city={selectedCity} 
+                  dataType="trafficDensity" 
+                  title="Real-time Traffic Density" 
+                  color="#E53E3E" 
+                  height="400px" 
+                />
+              </SimpleGrid>
             </TabPanel>
             
-            {/* Other tabs would be similar */}
+            {/* Resources Tab */}
             <TabPanel>
-              <Heading size="md">Water Analysis</Heading>
-              <Text mt={4}>Detailed water analysis data would appear here.</Text>
-            </TabPanel>
-            
-            <TabPanel>
-              <Heading size="md">Energy Analysis</Heading>
-              <Text mt={4}>Detailed energy analysis data would appear here.</Text>
-            </TabPanel>
-            
-            <TabPanel>
-              <Card borderRadius="lg">
-                <CardHeader>
-                  <Heading size="md">City Comparison</Heading>
-                </CardHeader>
-                <CardBody>
-                  <Box height="400px">
-                    <Bar 
-                      data={comparisonData} 
-                      options={{ 
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: {
-                            position: 'top' as const,
-                          },
-                          title: {
-                            display: true,
-                            text: `${selectedCity} vs National Average`,
-                          },
-                        },
-                      }} 
-                    />
-                  </Box>
-                </CardBody>
-              </Card>
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
+                <LiveChart 
+                  city={selectedCity} 
+                  dataType="waterLevel" 
+                  title="Water Reservoir Levels" 
+                  color="#3182CE" 
+                  height={chartHeight} 
+                />
+                <LiveChart 
+                  city={selectedCity} 
+                  dataType="energyUsage" 
+                  title="Energy Consumption" 
+                  color="#38A169" 
+                  height={chartHeight} 
+                />
+              </SimpleGrid>
             </TabPanel>
           </TabPanels>
         </Tabs>
