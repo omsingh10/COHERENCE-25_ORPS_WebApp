@@ -1,6 +1,7 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ChakraProvider, Box } from '@chakra-ui/react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { ChakraProvider, extendTheme } from '@chakra-ui/react';
+import { useAuth } from './contexts/AuthContext';
 
 // Components
 import Navbar from './components/Navbar';
@@ -11,73 +12,148 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import Analytics from './pages/Analytics';
+import CityMap from './pages/CityMap';
+import Alerts from './pages/Alerts';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 
-// Protected route component
-const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
-  const { isAuthenticated, loading, user } = useAuth();
-  
+// Theme configuration
+const theme = extendTheme({
+  fonts: {
+    heading: `'Inter', sans-serif`,
+    body: `'Inter', sans-serif`,
+  },
+  styles: {
+    global: {
+      body: {
+        bg: 'gray.50',
+      },
+    },
+  },
+});
+
+// Protected Route Component
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
   if (loading) {
     return <div>Loading...</div>;
   }
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  
-  if (adminOnly && user?.role !== 'admin') {
-    return <Navigate to="/dashboard" />;
-  }
-  
+
   return <>{children}</>;
 };
 
-// Role-based dashboard redirect
+// Dashboard Redirect based on user role
 const DashboardRedirect = () => {
   const { user } = useAuth();
   
   if (user?.role === 'admin') {
-    return <Navigate to="/admin" />;
-  } else {
-    return <Navigate to="/user-dashboard" />;
+    return <Navigate to="/admin" replace />;
   }
+  
+  return <Navigate to="/user-dashboard" replace />;
 };
 
 function App() {
   return (
-    <ChakraProvider>
-      <AuthProvider>
-        <Router>
-          <Box minH="100vh">
-            <Navbar />
-            <Box>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                
-                {/* Redirect based on role */}
-                <Route path="/dashboard" element={<DashboardRedirect />} />
-                
-                {/* User Dashboard */}
-                <Route path="/user-dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Admin Dashboard - only for admins */}
-                <Route path="/admin" element={
-                  <ProtectedRoute adminOnly={true}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </Box>
-          </Box>
-        </Router>
-      </AuthProvider>
+    <ChakraProvider theme={theme}>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Dashboard Redirect */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <DashboardRedirect />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* User Dashboard */}
+          <Route 
+            path="/user-dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Admin Dashboard */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Feature Pages */}
+          <Route 
+            path="/analytics" 
+            element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route 
+            path="/city-map" 
+            element={
+              <ProtectedRoute>
+                <CityMap />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route 
+            path="/alerts" 
+            element={
+              <ProtectedRoute>
+                <Alerts />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route 
+            path="/reports" 
+            element={
+              <ProtectedRoute>
+                <Reports />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route 
+            path="/settings" 
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Catch-all route - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
     </ChakraProvider>
   );
 }
