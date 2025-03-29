@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Map Test</title>
+    <link rel="stylesheet" href="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.23.0/maps/maps.css">
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .control-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="control-panel">
+        <h3>Map Test</h3>
+        <div>
+            <label for="city-select">City:</label>
+            <select id="city-select">
+                <option value="Mumbai">Mumbai</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Bangalore">Bangalore</option>
+                <option value="Chennai">Chennai</option>
+                <option value="Hyderabad">Hyderabad</option>
+                <option value="Kolkata">Kolkata</option>
+            </select>
+        </div>
+        <div style="margin-top: 10px;">
+            <label>
+                <input type="checkbox" id="traffic-toggle" checked> 
+                Show Traffic
+            </label>
+        </div>
+        <div id="status" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
+    </div>
+
+    <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.23.0/maps/maps-web.min.js"></script>
+    <script>
+        // Map configuration
+        const API_KEY = 'afc7a9e81a9116532857bb15e6ea3bb8';
+        
+        // City coordinates
+        const CITIES = {
+            'Mumbai': { lat: 19.0760, lon: 72.8777 },
+            'Delhi': { lat: 28.6139, lon: 77.2090 },
+            'Bangalore': { lat: 12.9716, lon: 77.5946 },
+            'Chennai': { lat: 13.0827, lon: 80.2707 },
+            'Hyderabad': { lat: 17.3850, lon: 78.4867 },
+            'Kolkata': { lat: 22.5726, lon: 88.3639 }
+        };
+        
+        // Map instance
+        let map = null;
+        const status = document.getElementById('status');
+        
+        function updateStatus(message) {
+            status.textContent = message;
+        }
+        
+        function initMap(cityName = 'Mumbai', showTraffic = true) {
+            updateStatus('Initializing map...');
+            
+            const city = CITIES[cityName];
+            
+            if (map) {
+                map.remove();
+            }
+            
+            try {
+                map = tt.map({
+                    key: API_KEY,
+                    container: 'map',
+                    center: [city.lon, city.lat],
+                    zoom: 12
+                });
+                
+                map.addControl(new tt.NavigationControl());
+                
+                map.on('load', function() {
+                    updateStatus('Map loaded successfully');
+                    
+                    if (showTraffic) {
+                        try {
+                            map.addTier(tt.map.TileType.TRAFFIC_FLOW);
+                            updateStatus('Traffic flow layer added');
+                        } catch (e) {
+                            updateStatus('Error adding traffic layer: ' + e.message);
+                            console.error('Traffic layer error:', e);
+                        }
+                    }
+                });
+                
+                map.on('error', function(e) {
+                    updateStatus('Map error: ' + e.error);
+                    console.error('Map error:', e);
+                });
+            } catch (e) {
+                updateStatus('Failed to initialize map: ' + e.message);
+                console.error('Map initialization error:', e);
+            }
+        }
+        
+        // Initialize map when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const citySelect = document.getElementById('city-select');
+            const trafficToggle = document.getElementById('traffic-toggle');
+            
+            // Initial map load
+            initMap(citySelect.value, trafficToggle.checked);
+            
+            // Change city
+            citySelect.addEventListener('change', function() {
+                initMap(this.value, trafficToggle.checked);
+            });
+            
+            // Toggle traffic
+            trafficToggle.addEventListener('change', function() {
+                initMap(citySelect.value, this.checked);
+            });
+        });
+    </script>
+</body>
+</html> 
