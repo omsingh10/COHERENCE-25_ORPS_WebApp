@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-const GOOGLE_API_KEY = 'AIzaSyCsmtI4xx4hI1qEpOVKj67poTYfEgNqGqY';
+const GOOGLE_API_KEY = 'use_you_apikey
+
+';
 
 export default function CitySearch({ onCityData }: { onCityData: (data: any) => void }) {
   const [city, setCity] = useState('');
