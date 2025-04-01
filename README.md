@@ -15,6 +15,9 @@ A comprehensive web application for real-time monitoring of urban parameters acr
 
 ## Tech Stack 💻
 
+
+
+
 ### Frontend
 - React.js with TypeScript
 - Chakra UI for styling
